@@ -1,54 +1,84 @@
 # Cenefas Publicitarias
 
-App web para generar cenefas publicitarias desde un archivo Excel.
+App web para generar cenefas publicitarias desde un Excel **o** escaneando códigos de barras.
 
 ## Estructura
 ```
 cenefas_app/
-├── app.py              ← servidor Flask
+├── app.py              ← servidor Flask (Excel + Escáner + API base de datos)
 ├── parser.py           ← parseo TIPO/MARCA/DETALLE
-├── generador.py        ← generación del PDF
+├── generador.py        ← generación del PDF (con y sin precio)
+├── productos.db        ← base de datos SQLite (se crea automáticamente)
 ├── requirements.txt
 ├── Procfile
 ├── templates/
-│   └── index.html      ← interfaz web
+│   └── index.html      ← interfaz web (3 pestañas)
 └── static/
     └── fonts/          ← tipografías PassionOne, Archivo, Montserrat
 ```
 
 ---
 
-## Despliegue en Render (paso a paso)
+## Modos de uso
+
+### 📊 Pestaña Excel (flujo original)
+1. Sube el archivo Excel de ofertas
+2. Escribe la vigencia
+3. Toca **Cargar y revisar ofertas**
+4. Edita TIPO/MARCA/DETALLE si hace falta
+5. **Generar y descargar PDF** — cenefas **con precio**
+
+### 📷 Pestaña Escáner
+1. Escribe la vigencia
+2. Activa la cámara y apunta al código de barras, o escríbelo manualmente
+3. Si el código está en la base de datos → se agrega automáticamente
+4. Si **no** está → aparece un formulario para añadirlo y se guarda para la próxima vez
+5. **Generar y descargar PDF** — cenefas **sin precio** (zona en blanco)
+
+### 🗄️ Pestaña Base de datos
+- **Importar** un CSV o Excel con columnas `CODIGO, TIPO, MARCA, DETALLE`
+- **Buscar**, **editar** y **eliminar** productos individualmente
+- **Añadir** nuevos productos con el botón `+ Nuevo`
+
+---
+
+## Formato del archivo de importación
+
+| CODIGO        | TIPO    | MARCA   | DETALLE          |
+|---------------|---------|---------|------------------|
+| 7501055300057 | SHAMPOO | PANTENE | 2EN1 400ML       |
+| 7501035900035 | CREMA   | DOVE    | HUMECTANTE 200ML |
+
+---
+
+## Despliegue en Render
 
 ### 1. Subir a GitHub
-1. En GitHub, crea un repositorio nuevo llamado `cenefas-app` (privado o público)
-2. Sube todos estos archivos al repositorio
+Crea un repositorio y sube todos los archivos.
 
 ### 2. Crear servicio en Render
-1. Entra a [render.com](https://render.com) y crea una cuenta gratuita
-2. Haz clic en **New → Web Service**
-3. Conecta tu cuenta de GitHub y selecciona el repositorio `cenefas-app`
-4. Configura el servicio:
-   - **Name:** cenefas-app
+1. [render.com](https://render.com) → **New → Web Service**
+2. Conecta el repositorio
+3. Configura:
    - **Runtime:** Python 3
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT`
    - **Instance Type:** Free
-5. Haz clic en **Create Web Service**
+4. **Create Web Service**
 
-### 3. Listo
-Render te dará una URL tipo `https://cenefas-app.onrender.com`.
-Ábrela desde tu Android y úsala normalmente.
-
-> **Nota:** En el tier gratuito de Render, el servicio se "duerme"
-> tras 15 minutos sin uso. La primera carga después tarda ~30 segundos.
-> Las siguientes son inmediatas.
+> **Nota sobre la base de datos:** En el tier gratuito de Render, el
+> disco es efímero — los datos de `productos.db` se pierden al
+> reiniciar el servicio. Para persistencia real, agrega un **Render Disk**
+> (plan pagado) o migra a PostgreSQL con SQLAlchemy.
+> Para uso personal con reinicios ocasionales, basta con volver a
+> importar el CSV tras cada reinicio.
 
 ---
 
-## Uso
-1. Sube el archivo Excel de ofertas
-2. Escribe la vigencia (ej: `Vigencia: Fin de Semana  26 - 28  Jun 2026`)
-3. Toca **Cargar y revisar ofertas**
-4. Revisa la tabla — puedes editar TIPO, MARCA o DETALLE tocando la celda
-5. Toca **Generar y descargar PDF**
+## Uso de la cámara
+
+La app usa **QuaggaJS** (incluido desde CDN), que funciona en el
+navegador sin instalar nada. Requiere que el sitio esté en **HTTPS**
+(Render lo provee automáticamente). En `localhost` también funciona.
+
+Formatos de código soportados: EAN-13, EAN-8, Code 128, UPC-A, UPC-E, Code 39.

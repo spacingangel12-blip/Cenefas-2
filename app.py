@@ -1,89 +1,108 @@
 from flask import Flask, request, jsonify, send_file, render_template
 import pandas as pd
-import os, io, uuid, tempfile
+import os, io, uuid, tempfile, sqlite3
 from parser import parse_descripcion
 from generador import generar_pdf
 
 app = Flask(__name__)
 
-COLUMNAS_ESPERADAS = {
-    'CODIGO':        ['CODIGO', 'CÓDIGO', 'COD'],
-    'DESCRIPCION':   ['DESCRIPCION', 'DESCRIPCIÓN', 'DESC'],
-    'PRECIO NORMAL': ['PRECIO NORMAL', 'P NORMAL', 'PRECIO REGULAR'],
-    'PRECIO OFERTA': ['PRECIO OFERTA', 'P OFERTA', 'PRECIO DE OFERTA'],
-    'CATEGORIA':     ['CATEGORIA', 'CATEGORÍA'],
-}
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'productos.db')
 
+# ─────────────────────────────────────────────
+#  Base de datos SQLite
+# ─────────────────────────────────────────────
 
-def _norm(txt):
-    return str(txt).strip().upper()
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
+CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'catalogo.csv')
 
-def leer_excel(archivo):
+def init_db():
+    with get_db() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS productos (
+                codigo  TEXT PRIMARY KEY,
+                tipo    TEXT DEFAULT '',
+                marca   TEXT DEFAULT '',
+                detalle TEXT DEFAULT ''
+            )
+        ''')
+        conn.commit()
+
+def cargar_catalogo_csv():
     """
-    Lee el Excel encontrando automáticamente la fila de encabezado
-    (puede variar de posición entre archivos) y mapeando las columnas
-    por nombre en vez de por posición fija. Tolera columnas extra o
-    faltantes (p. ej. archivos sin columna GANCHO).
+    Carga catalogo.csv a la base de datos al arrancar.
+    - Inserta productos nuevos (que no existan en la BD).
+    - No sobreescribe productos editados manualmente.
+    Si quieres forzar una actualización completa, borra productos.db antes de arrancar.
     """
-    crudo = pd.read_excel(archivo, header=None)
+    if not os.path.exists(CSV_PATH):
+        return
 
-    fila_header = None
-    for i in range(min(15, len(crudo))):
-        valores = [_norm(v) for v in crudo.iloc[i].tolist()]
-        if any(v in COLUMNAS_ESPERADAS['CODIGO'] for v in valores) and \
-           any(v in COLUMNAS_ESPERADAS['DESCRIPCION'] for v in valores):
-            fila_header = i
-            break
+    try:
+        df = pd.read_csv(CSV_PATH, dtype=str).fillna('')
+        df.columns = [c.strip().upper() for c in df.columns]
+        if 'CODIGO' not in df.columns:
+            print('[catalogo] El CSV no tiene columna CODIGO, se omite.')
+            return
 
-    if fila_header is None:
-        raise ValueError(
-            'No se encontró la fila de encabezado (CODIGO / DESCRIPCION) '
-            'en las primeras 15 filas del archivo.'
-        )
+        insertados = 0
+        with get_db() as conn:
+            for _, row in df.iterrows():
+                cod = str(row.get('CODIGO', '')).strip()
+                if not cod:
+                    continue
+                existe = conn.execute(
+                    'SELECT 1 FROM productos WHERE codigo=?', (cod,)
+                ).fetchone()
+                if not existe:
+                    conn.execute(
+                        'INSERT INTO productos (codigo, tipo, marca, detalle) VALUES (?,?,?,?)',
+                        (
+                            cod,
+                            str(row.get('TIPO',    '')).strip().upper(),
+                            str(row.get('MARCA',   '')).strip().upper(),
+                            str(row.get('DETALLE', '')).strip().upper(),
+                        )
+                    )
+                    insertados += 1
+            conn.commit()
+        print(f'[catalogo] {insertados} productos nuevos cargados desde catalogo.csv')
+    except Exception as e:
+        print(f'[catalogo] Error cargando CSV: {e}')
 
-    encabezados = [_norm(v) for v in crudo.iloc[fila_header].tolist()]
-    mapeo = {}
-    for canon, alias in COLUMNAS_ESPERADAS.items():
-        for idx, val in enumerate(encabezados):
-            if val in alias:
-                mapeo[canon] = idx
-                break
+init_db()
+cargar_catalogo_csv()
 
-    faltantes = [c for c in ('CODIGO', 'DESCRIPCION', 'PRECIO OFERTA') if c not in mapeo]
-    if faltantes:
-        raise ValueError(f'Faltan columnas obligatorias en el Excel: {", ".join(faltantes)}')
 
-    df_raw = crudo.iloc[fila_header + 1:].reset_index(drop=True)
-    df = pd.DataFrame()
-    for canon, idx in mapeo.items():
-        df[canon] = df_raw[idx]
-
-    for canon in COLUMNAS_ESPERADAS:
-        if canon not in df.columns:
-            df[canon] = pd.NA
-
-    return df
-
+# ─────────────────────────────────────────────
+#  Interfaz principal
+# ─────────────────────────────────────────────
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
+# ─────────────────────────────────────────────
+#  Modo Excel (flujo original)
+# ─────────────────────────────────────────────
+
 @app.route('/parsear', methods=['POST'])
 def parsear():
-    """Recibe el Excel y devuelve las filas parseadas para mostrar en tabla."""
     if 'archivo' not in request.files:
         return jsonify({'error': 'No se recibió archivo'}), 400
 
     archivo = request.files['archivo']
     try:
-        df_raw = leer_excel(archivo)
+        df_raw = pd.read_excel(archivo, header=3)
+        df_raw.columns = ['DROP','CODIGO','DESCRIPCION','PRECIO NORMAL','PRECIO OFERTA','CATEGORIA','GANCHO']
+        df_raw = df_raw.drop(columns=['DROP'])
         df_raw = df_raw[df_raw['CODIGO'].notna() & df_raw['DESCRIPCION'].notna()]
         df_raw = df_raw[df_raw['PRECIO OFERTA'].notna()]
         df_raw = df_raw.reset_index(drop=True)
-        if df_raw.empty:
-            return jsonify({'error': 'No se encontraron filas válidas con código, descripción y precio de oferta.'}), 400
     except Exception as e:
         return jsonify({'error': f'Error leyendo Excel: {str(e)}'}), 400
 
@@ -105,14 +124,13 @@ def parsear():
 
 @app.route('/generar', methods=['POST'])
 def generar():
-    """Recibe las filas (editadas o no) y la vigencia, devuelve el PDF."""
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No se recibieron datos'}), 400
 
-    filas          = data.get('filas', [])
-    vigencia       = data.get('vigencia', '').strip()
-    mostrar_precio = data.get('mostrar_precio', True)
+    filas    = data.get('filas', [])
+    vigencia = data.get('vigencia', '').strip()
+    modo     = data.get('modo', 'excel')   # 'excel' | 'scanner'
 
     if not filas:
         return jsonify({'error': 'No hay filas para generar'}), 400
@@ -121,7 +139,7 @@ def generar():
 
     tmp = os.path.join(tempfile.gettempdir(), f'cenefas_{uuid.uuid4().hex}.pdf')
     try:
-        generar_pdf(filas, vigencia, tmp, mostrar_precio)
+        generar_pdf(filas, vigencia, tmp, sin_precio=(modo == 'scanner'))
         return send_file(
             tmp,
             mimetype='application/pdf',
@@ -133,6 +151,153 @@ def generar():
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
+
+
+# ─────────────────────────────────────────────
+#  Modo Escáner — buscar código
+# ─────────────────────────────────────────────
+
+@app.route('/buscar_codigo', methods=['GET'])
+def buscar_codigo():
+    codigo = request.args.get('codigo', '').strip()
+    if not codigo:
+        return jsonify({'error': 'Código vacío'}), 400
+
+    with get_db() as conn:
+        row = conn.execute(
+            'SELECT * FROM productos WHERE codigo = ?', (codigo,)
+        ).fetchone()
+
+    if row:
+        return jsonify({'encontrado': True, 'producto': dict(row)})
+    else:
+        return jsonify({'encontrado': False})
+
+
+# ─────────────────────────────────────────────
+#  Base de datos — CRUD
+# ─────────────────────────────────────────────
+
+@app.route('/db/productos', methods=['GET'])
+def listar_productos():
+    q = request.args.get('q', '').strip()
+    with get_db() as conn:
+        if q:
+            rows = conn.execute(
+                '''SELECT * FROM productos
+                   WHERE codigo LIKE ? OR marca LIKE ? OR tipo LIKE ? OR detalle LIKE ?
+                   ORDER BY marca, tipo''',
+                (f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%')
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                'SELECT * FROM productos ORDER BY marca, tipo'
+            ).fetchall()
+    return jsonify({'productos': [dict(r) for r in rows]})
+
+
+@app.route('/db/productos', methods=['POST'])
+def crear_producto():
+    d = request.get_json()
+    codigo  = str(d.get('codigo',  '')).strip()
+    tipo    = str(d.get('tipo',    '')).strip().upper()
+    marca   = str(d.get('marca',   '')).strip().upper()
+    detalle = str(d.get('detalle', '')).strip().upper()
+
+    if not codigo:
+        return jsonify({'error': 'El código es obligatorio'}), 400
+
+    try:
+        with get_db() as conn:
+            conn.execute(
+                'INSERT INTO productos (codigo, tipo, marca, detalle) VALUES (?,?,?,?)',
+                (codigo, tipo, marca, detalle)
+            )
+            conn.commit()
+        return jsonify({'ok': True})
+    except sqlite3.IntegrityError:
+        return jsonify({'error': 'Ese código ya existe'}), 409
+
+
+@app.route('/db/productos/<codigo>', methods=['PUT'])
+def actualizar_producto(codigo):
+    d = request.get_json()
+    tipo    = str(d.get('tipo',    '')).strip().upper()
+    marca   = str(d.get('marca',   '')).strip().upper()
+    detalle = str(d.get('detalle', '')).strip().upper()
+
+    with get_db() as conn:
+        conn.execute(
+            'UPDATE productos SET tipo=?, marca=?, detalle=? WHERE codigo=?',
+            (tipo, marca, detalle, codigo)
+        )
+        conn.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/db/productos/<codigo>', methods=['DELETE'])
+def eliminar_producto(codigo):
+    with get_db() as conn:
+        conn.execute('DELETE FROM productos WHERE codigo=?', (codigo,))
+        conn.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/db/importar', methods=['POST'])
+def importar_csv():
+    """Importa un CSV/Excel con columnas: CODIGO, TIPO, MARCA, DETALLE"""
+    if 'archivo' not in request.files:
+        return jsonify({'error': 'No se recibió archivo'}), 400
+
+    archivo = request.files['archivo']
+    nombre  = archivo.filename.lower()
+
+    try:
+        if nombre.endswith('.csv'):
+            df = pd.read_csv(archivo)
+        else:
+            df = pd.read_excel(archivo)
+
+        df.columns = [c.strip().upper() for c in df.columns]
+        if 'CODIGO' not in df.columns:
+            return jsonify({'error': 'El archivo debe tener columna CODIGO'}), 400
+
+        insertados = 0
+        actualizados = 0
+        with get_db() as conn:
+            for _, row in df.iterrows():
+                cod = str(row.get('CODIGO', '')).strip()
+                if not cod or cod == 'nan':
+                    continue
+                tipo    = str(row.get('TIPO',    '')).strip().upper() if 'TIPO'    in df.columns else ''
+                marca   = str(row.get('MARCA',   '')).strip().upper() if 'MARCA'   in df.columns else ''
+                detalle = str(row.get('DETALLE', '')).strip().upper() if 'DETALLE' in df.columns else ''
+
+                exists = conn.execute(
+                    'SELECT 1 FROM productos WHERE codigo=?', (cod,)
+                ).fetchone()
+
+                if exists:
+                    conn.execute(
+                        'UPDATE productos SET tipo=?, marca=?, detalle=? WHERE codigo=?',
+                        (tipo, marca, detalle, cod)
+                    )
+                    actualizados += 1
+                else:
+                    conn.execute(
+                        'INSERT INTO productos (codigo, tipo, marca, detalle) VALUES (?,?,?,?)',
+                        (cod, tipo, marca, detalle)
+                    )
+                    insertados += 1
+            conn.commit()
+
+        return jsonify({
+            'ok': True,
+            'insertados': insertados,
+            'actualizados': actualizados
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
