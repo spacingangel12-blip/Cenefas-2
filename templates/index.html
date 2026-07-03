@@ -5,370 +5,616 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Cenefas Publicitarias</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f0f2f5;
-    color: #1a1a2e;
-    min-height: 100vh;
-  }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  min-height: 100vh;
+}
 
-  header {
-    background: #1a1a2e;
-    color: white;
-    padding: 18px 20px;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-  header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; }
-  header p  { font-size: 0.75rem; opacity: 0.65; margin-top: 2px; }
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  background: #1a1a2e;
+  color: white;
+  padding: 14px 20px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; text-align:center; padding-bottom:10px; }
 
-  .card {
-    background: white;
-    border-radius: 14px;
-    margin: 14px;
-    padding: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  }
-  .card h2 {
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #888;
-    margin-bottom: 12px;
-  }
+/* ── Tabs ────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+.tab-btn {
+  flex: 1;
+  padding: 11px 6px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.55);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+.tab-btn.active {
+  color: white;
+  border-bottom-color: #818cf8;
+}
 
-  /* Upload zone */
-  .upload-zone {
-    border: 2px dashed #c0c4d0;
-    border-radius: 10px;
-    padding: 28px 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-  }
-  .upload-zone.dragover, .upload-zone:hover { border-color: #4f46e5; background: #f5f3ff; }
-  .upload-zone input[type=file] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-  }
-  .upload-icon { font-size: 2.2rem; margin-bottom: 8px; }
-  .upload-zone p { font-size: 0.9rem; color: #555; }
-  .upload-zone small { color: #aaa; font-size: 0.75rem; }
-  .file-name {
-    margin-top: 10px;
-    font-size: 0.82rem;
-    color: #4f46e5;
-    font-weight: 600;
-    display: none;
-  }
+/* ── Tab panels ──────────────────────────────────────────── */
+.panel { display: none; }
+.panel.active { display: block; }
 
-  /* Vigencia */
-  label { font-size: 0.85rem; font-weight: 600; color: #444; display: block; margin-bottom: 6px; }
-  input[type=text] {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1.5px solid #dde0e8;
-    border-radius: 9px;
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 0.2s;
-    color: #1a1a2e;
-  }
-  input[type=text]:focus { border-color: #4f46e5; }
+/* ── Cards ───────────────────────────────────────────────── */
+.card {
+  background: white;
+  border-radius: 14px;
+  margin: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.card h2 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-bottom: 12px;
+}
 
-  /* Botón principal */
-  .btn-primary {
-    width: 100%;
-    padding: 15px;
-    background: #4f46e5;
-    color: white;
-    border: none;
-    border-radius: 11px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    letter-spacing: 0.3px;
-  }
-  .btn-primary:active { background: #3730a3; transform: scale(0.98); }
-  .btn-primary:disabled { background: #a5a3cc; cursor: not-allowed; transform: none; }
+/* ── Upload ──────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed #c0c4d0;
+  border-radius: 10px;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.upload-zone.dragover, .upload-zone:hover { border-color: #4f46e5; background: #f5f3ff; }
+.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon { font-size: 2rem; margin-bottom: 6px; }
+.upload-zone p { font-size: 0.88rem; color: #555; }
+.upload-zone small { color: #aaa; font-size: 0.73rem; }
+.file-name { margin-top: 8px; font-size: 0.82rem; color: #4f46e5; font-weight: 600; display: none; }
 
-  /* Spinner */
-  .spinner {
-    display: none;
-    text-align: center;
-    padding: 20px;
-    color: #4f46e5;
-    font-size: 0.9rem;
-  }
-  .spinner::before {
-    content: '';
-    display: block;
-    width: 36px; height: 36px;
-    border: 3px solid #e0e0ff;
-    border-top-color: #4f46e5;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 10px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── Inputs ──────────────────────────────────────────────── */
+label { font-size: 0.82rem; font-weight: 600; color: #444; display: block; margin-bottom: 5px; }
+input[type=text] {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid #dde0e8;
+  border-radius: 9px;
+  font-size: 0.93rem;
+  outline: none;
+  transition: border-color 0.2s;
+  color: #1a1a2e;
+}
+input[type=text]:focus { border-color: #4f46e5; }
 
-  /* Tabla de parseo */
-  #seccion-tabla { display: none; }
-  .tabla-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .badge {
-    background: #eef2ff;
-    color: #4f46e5;
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.78rem;
-    font-weight: 700;
-  }
-  .btn-small {
-    padding: 7px 14px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn-outline {
-    background: white;
-    border: 1.5px solid #4f46e5;
-    color: #4f46e5;
-  }
-  .btn-outline:active { background: #eef2ff; }
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 11px;
+  font-size: 0.97rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  letter-spacing: 0.3px;
+}
+.btn-primary:active { background: #3730a3; transform: scale(0.98); }
+.btn-primary:disabled { background: #a5a3cc; cursor: not-allowed; transform: none; }
 
-  .tabla-wrap {
-    overflow-x: auto;
-    border-radius: 10px;
-    border: 1px solid #eaecf0;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
-    min-width: 580px;
-  }
-  thead th {
-    background: #1a1a2e;
-    color: white;
-    padding: 10px 8px;
-    text-align: left;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-  }
-  tbody tr:nth-child(even) { background: #f8f9fc; }
-  tbody tr:hover { background: #f0f2ff; }
-  tbody td {
-    padding: 7px 8px;
-    border-bottom: 1px solid #eaecf0;
-    vertical-align: middle;
-  }
-  tbody td input {
-    width: 100%;
-    border: none;
-    background: transparent;
-    font-size: 0.78rem;
-    color: #1a1a2e;
-    padding: 2px 4px;
-    border-radius: 4px;
-    min-width: 60px;
-  }
-  tbody td input:focus {
-    background: #eef2ff;
-    outline: 1px solid #4f46e5;
-  }
-  .col-desc { color: #888; font-size: 0.72rem; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .col-precio { font-weight: 700; color: #1a1a2e; white-space: nowrap; }
+.btn-small {
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-outline {
+  background: white;
+  border: 1.5px solid #4f46e5;
+  color: #4f46e5;
+}
+.btn-outline:active { background: #eef2ff; }
+.btn-danger {
+  background: white;
+  border: 1.5px solid #ef4444;
+  color: #ef4444;
+}
+.btn-success {
+  background: #16a34a;
+  color: white;
+  border: none;
+}
 
-  /* Botón generar PDF */
-  #btn-generar { display: none; margin: 14px; }
+/* ── Spinner ─────────────────────────────────────────────── */
+.spinner {
+  display: none;
+  text-align: center;
+  padding: 18px;
+  color: #4f46e5;
+  font-size: 0.88rem;
+}
+.spinner::before {
+  content: '';
+  display: block;
+  width: 34px; height: 34px;
+  border: 3px solid #e0e0ff;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Alerta */
-  .alerta {
-    margin: 12px 14px;
-    padding: 12px 16px;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    display: none;
-  }
-  .alerta-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-  .alerta-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+/* ── Alerts ──────────────────────────────────────────────── */
+.alerta {
+  margin: 10px 14px;
+  padding: 11px 15px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  display: none;
+}
+.alerta-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.alerta-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.alerta-warn    { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
 
-  /* Hint de edición */
-  .hint {
-    font-size: 0.75rem;
-    color: #999;
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
+/* ── Table ───────────────────────────────────────────────── */
+.tabla-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.badge {
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.tabla-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #eaecf0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.77rem;
+  min-width: 500px;
+}
+thead th {
+  background: #1a1a2e;
+  color: white;
+  padding: 9px 7px;
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+tbody tr:nth-child(even) { background: #f8f9fc; }
+tbody tr:hover { background: #f0f2ff; }
+tbody td {
+  padding: 6px 7px;
+  border-bottom: 1px solid #eaecf0;
+  vertical-align: middle;
+}
+tbody td input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.77rem;
+  color: #1a1a2e;
+  padding: 2px 3px;
+  border-radius: 4px;
+  min-width: 55px;
+}
+tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
+.col-desc  { color: #888; font-size: 0.7rem; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col-precio { font-weight: 700; color: #1a1a2e; white-space: nowrap; }
+.hint { font-size: 0.73rem; color: #999; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+/* ── Escáner ─────────────────────────────────────────────── */
+#camara-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4/3;
+  max-height: 260px;
+}
+#video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.scan-line {
+  position: absolute;
+  left: 10%; right: 10%;
+  height: 2px;
+  background: rgba(79,70,229,0.8);
+  animation: scanMove 2s ease-in-out infinite;
+  top: 50%;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(79,70,229,0.6);
+}
+@keyframes scanMove {
+  0%,100% { top: 25%; }
+  50%      { top: 75%; }
+}
+.scan-corners {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid rgba(79,70,229,0.7);
+  border-radius: 6px;
+}
+#btn-camara { margin-bottom: 10px; }
+#scan-result {
+  text-align: center;
+  padding: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #4f46e5;
+  min-height: 32px;
+  letter-spacing: 1px;
+}
+
+/* Lista de escaneados */
+.scan-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eaecf0;
+  background: white;
+}
+.scan-item:last-child { border-bottom: none; }
+.scan-item-info { flex: 1; min-width: 0; }
+.scan-item-marca { font-weight: 700; font-size: 0.88rem; color: #1a1a2e; }
+.scan-item-det   { font-size: 0.75rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-item-cod   { font-size: 0.7rem; color: #aaa; }
+.scan-item-del   { color: #ef4444; border: none; background: none; font-size: 1.1rem; cursor: pointer; padding: 4px; flex-shrink: 0; }
+
+/* Modal añadir producto */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  width: 100%;
+  max-width: 480px;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+.modal .campo { margin-bottom: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-actions button { flex: 1; padding: 13px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; }
+.modal-cancel { background: #f0f2f5; color: #555; }
+.modal-save   { background: #4f46e5; color: white; }
+
+/* DB panel */
+.db-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.db-toolbar input[type=text] { flex: 1; min-width: 120px; padding: 9px 12px; }
+.db-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eaecf0;
+}
+.db-item:last-child { border-bottom: none; }
+.db-item-info { flex: 1; min-width: 0; }
+.db-item-cod  { font-size: 0.7rem; color: #aaa; }
+.db-item-main { font-weight: 700; font-size: 0.85rem; }
+.db-item-det  { font-size: 0.75rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>🏷️ Cenefas Publicitarias</h1>
-  <p>Sube el Excel, revisa y genera el PDF</p>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="cambiarTab('excel',this)">📊 Excel</button>
+    <button class="tab-btn"        onclick="cambiarTab('scanner',this)">📷 Escáner</button>
+    <button class="tab-btn"        onclick="cambiarTab('db',this)">🗄️ Base de datos</button>
+  </div>
 </header>
 
-<!-- PASO 1: Archivo -->
-<div class="card">
-  <h2>1 · Archivo Excel</h2>
-  <div class="upload-zone" id="upload-zone">
-    <input type="file" id="archivo" accept=".xlsx,.xls">
-    <div class="upload-icon">📂</div>
-    <p>Toca para seleccionar el archivo</p>
-    <small>.xlsx · .xls</small>
-    <div class="file-name" id="file-name"></div>
-  </div>
-</div>
+<!-- ══════════════════════════════════════════════════════════
+     PANEL EXCEL (flujo original)
+══════════════════════════════════════════════════════════ -->
+<div id="panel-excel" class="panel active">
 
-<!-- PASO 2: Vigencia -->
-<div class="card">
-  <h2>2 · Vigencia</h2>
-  <label for="vigencia">Texto que aparece en cada cenefa</label>
-  <input type="text" id="vigencia"
-         placeholder="Ej: Vigencia: Fin de Semana  26 - 28  Jun 2026"
-         value="Vigencia: Fin de Semana">
-
-  <div style="display:flex; align-items:center; gap:8px; margin-top:14px;">
-    <input type="checkbox" id="incluir-precio" checked
-           style="width:18px; height:18px; accent-color:#4f46e5;">
-    <label for="incluir-precio" style="margin:0; font-weight:600; color:#444;">
-      Incluir precio oferta
-    </label>
-  </div>
-  <small style="color:#aaa; font-size:0.75rem; display:block; margin-top:4px;">
-    Si lo desmarcas, se deja el espacio del precio en blanco (para llenarlo a mano).
-  </small>
-</div>
-
-<!-- BOTÓN PARSEAR -->
-<div style="margin: 0 14px;">
-  <button class="btn-primary" id="btn-parsear" onclick="parsear()">
-    Cargar y revisar ofertas
-  </button>
-</div>
-
-<!-- SPINNER -->
-<div class="spinner" id="spinner-parsear">Leyendo archivo…</div>
-
-<!-- ALERTA -->
-<div class="alerta alerta-error" id="alerta"></div>
-
-<!-- PASO 3: Tabla editable -->
-<div id="seccion-tabla">
   <div class="card">
-    <div class="tabla-header">
-      <h2 style="margin:0">3 · Revisar parseo</h2>
-      <span class="badge" id="badge-total">0 ofertas</span>
+    <h2>1 · Archivo Excel</h2>
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="archivo" accept=".xlsx,.xls">
+      <div class="upload-icon">📂</div>
+      <p>Toca para seleccionar el archivo</p>
+      <small>.xlsx · .xls</small>
+      <div class="file-name" id="file-name"></div>
     </div>
-    <div class="hint">✏️ Toca cualquier celda para corregir</div>
-    <div class="tabla-wrap" style="margin-top:10px">
-      <table id="tabla-ofertas">
-        <thead>
-          <tr>
-            <th>Cód</th>
-            <th>Descripción</th>
-            <th>Tipo</th>
-            <th>Marca</th>
-            <th>Detalle</th>
-            <th>P. Oferta</th>
-            <th>P. Normal</th>
-          </tr>
-        </thead>
-        <tbody id="tabla-body"></tbody>
-      </table>
+  </div>
+
+  <div class="card">
+    <h2>2 · Vigencia</h2>
+    <label for="vigencia-excel">Texto que aparece en cada cenefa</label>
+    <input type="text" id="vigencia-excel"
+           placeholder="Ej: Vigencia: Fin de Semana  26 - 28  Jun 2026"
+           value="Vigencia: Fin de Semana">
+  </div>
+
+  <div style="margin: 0 14px;">
+    <button class="btn-primary" id="btn-parsear" onclick="parsear()">
+      Cargar y revisar ofertas
+    </button>
+  </div>
+
+  <div class="spinner" id="spinner-parsear">Leyendo archivo…</div>
+  <div class="alerta alerta-error" id="alerta-excel"></div>
+
+  <div id="seccion-tabla" style="display:none">
+    <div class="card">
+      <div class="tabla-header">
+        <h2 style="margin:0">3 · Revisar parseo</h2>
+        <span class="badge" id="badge-total">0 ofertas</span>
+      </div>
+      <div class="hint">✏️ Toca cualquier celda para corregir</div>
+      <div class="tabla-wrap" style="margin-top:10px">
+        <table id="tabla-ofertas">
+          <thead>
+            <tr>
+              <th>Cód</th><th>Descripción</th><th>Tipo</th>
+              <th>Marca</th><th>Detalle</th><th>P. Oferta</th><th>P. Normal</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="btn-generar-excel" style="display:none; margin:14px;">
+    <button class="btn-primary" onclick="generarPDF('excel')">
+      ⬇️ Generar y descargar PDF
+    </button>
+  </div>
+
+  <div class="spinner" id="spinner-generar-excel">Generando PDF…</div>
+  <div class="alerta alerta-success" id="ok-excel"></div>
+  <div style="height:30px"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PANEL ESCÁNER
+══════════════════════════════════════════════════════════ -->
+<div id="panel-scanner" class="panel">
+
+  <div class="card">
+    <h2>Vigencia</h2>
+    <input type="text" id="vigencia-scan"
+           placeholder="Ej: Vigencia: Fin de Semana  26 - 28  Jun 2026"
+           value="Vigencia: Fin de Semana">
+  </div>
+
+  <div class="card">
+    <h2>Escanear código de barras</h2>
+    <button class="btn-primary" id="btn-camara" onclick="toggleCamara()">
+      📷 Activar cámara
+    </button>
+    <div id="camara-wrap" style="display:none">
+      <video id="video-el" autoplay playsinline muted></video>
+      <div class="scan-corners"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div id="scan-result"></div>
+
+    <!-- Búsqueda manual por si la cámara falla -->
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <input type="text" id="cod-manual" placeholder="O escribe el código manualmente…"
+             style="flex:1" onkeydown="if(event.key==='Enter') buscarManual()">
+      <button class="btn-small btn-outline" onclick="buscarManual()">Buscar</button>
+    </div>
+  </div>
+
+  <div class="alerta alerta-error" id="alerta-scan"></div>
+  <div class="alerta alerta-warn"  id="warn-scan"></div>
+
+  <!-- Lista escaneados -->
+  <div id="scan-lista-wrap" style="display:none">
+    <div class="card">
+      <div class="tabla-header">
+        <h2 style="margin:0">Productos escaneados</h2>
+        <span class="badge" id="badge-scan">0</span>
+      </div>
+      <div id="scan-lista" style="border-radius:10px; border:1px solid #eaecf0; overflow:hidden;"></div>
+    </div>
+  </div>
+
+  <div id="btn-generar-scan" style="display:none; margin:14px;">
+    <button class="btn-primary" onclick="generarPDF('scanner')">
+      ⬇️ Generar y descargar PDF
+    </button>
+  </div>
+
+  <div class="spinner" id="spinner-generar-scan">Generando PDF…</div>
+  <div class="alerta alerta-success" id="ok-scan"></div>
+  <div style="height:30px"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PANEL BASE DE DATOS
+══════════════════════════════════════════════════════════ -->
+<div id="panel-db" class="panel">
+
+  <div class="card">
+    <h2>Importar desde archivo</h2>
+    <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">
+      CSV o Excel con columnas: <strong>CODIGO, TIPO, MARCA, DETALLE</strong>
+    </p>
+    <div class="upload-zone" style="padding:16px">
+      <input type="file" id="archivo-db" accept=".xlsx,.xls,.csv" onchange="importarDB()">
+      <div class="upload-icon" style="font-size:1.5rem">📁</div>
+      <p style="font-size:0.82rem">Toca para importar</p>
+    </div>
+    <div class="alerta alerta-success" id="ok-import" style="margin:8px 0 0;"></div>
+    <div class="alerta alerta-error"   id="err-import" style="margin:8px 0 0;"></div>
+  </div>
+
+  <div class="card">
+    <div class="db-toolbar">
+      <input type="text" id="db-buscar" placeholder="🔍 Buscar…" oninput="cargarDB()">
+      <button class="btn-small btn-success" onclick="abrirModalNuevo()">+ Nuevo</button>
+    </div>
+    <div style="border-radius:10px; border:1px solid #eaecf0; overflow:hidden;">
+      <div id="db-lista"><p style="text-align:center;padding:20px;color:#aaa;font-size:0.85rem">Cargando…</p></div>
+    </div>
+    <div class="badge" id="db-count" style="margin-top:10px; display:inline-block;">0 productos</div>
+  </div>
+  <div style="height:30px"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — añadir / editar producto
+══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="cerrarModal(event)">
+  <div class="modal">
+    <h3 id="modal-title">Nuevo producto</h3>
+    <input type="hidden" id="modal-codigo-orig">
+    <div class="campo">
+      <label>Código de barras *</label>
+      <input type="text" id="modal-codigo" placeholder="Ej: 7501055300057">
+    </div>
+    <div class="campo">
+      <label>Tipo</label>
+      <input type="text" id="modal-tipo" placeholder="Ej: SHAMPOO">
+    </div>
+    <div class="campo">
+      <label>Marca</label>
+      <input type="text" id="modal-marca" placeholder="Ej: PANTENE">
+    </div>
+    <div class="campo">
+      <label>Detalle</label>
+      <input type="text" id="modal-detalle" placeholder="Ej: 2EN1 400ML">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="cerrarModalBtn()">Cancelar</button>
+      <button class="modal-save"   onclick="guardarProducto()">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- BOTÓN GENERAR PDF -->
-<div id="btn-generar">
-  <button class="btn-primary" onclick="generarPDF()">
-    ⬇️ Generar y descargar PDF
-  </button>
-</div>
 
-<div class="spinner" id="spinner-generar">Generando PDF…</div>
-<div class="alerta alerta-success" id="alerta-ok"></div>
-
-<div style="height:30px"></div>
-
+<!-- ══════════════════════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script>
-let filasData = [];
 
-// Mostrar nombre del archivo seleccionado
-document.getElementById('archivo').addEventListener('change', function() {
-  const fn = document.getElementById('file-name');
-  if (this.files[0]) {
-    fn.textContent = '✅ ' + this.files[0].name;
-    fn.style.display = 'block';
-  }
-});
+// ── Tabs ────────────────────────────────────────────────────────────────────
+function cambiarTab(nombre, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + nombre).classList.add('active');
+  btn.classList.add('active');
+  if (nombre === 'db') cargarDB();
+  if (nombre !== 'scanner') pararCamara();
+}
 
-function mostrarAlerta(msg, tipo='error') {
-  const el = document.getElementById('alerta');
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function mostrarAlerta(id, msg, tipo='error', ms=5000) {
+  const el = document.getElementById(id);
+  if (!el) return;
   el.textContent = msg;
   el.className = 'alerta alerta-' + tipo;
   el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 5000);
+  if (ms > 0) setTimeout(() => el.style.display = 'none', ms);
 }
+
+// ── EXCEL ────────────────────────────────────────────────────────────────────
+let filasExcel = [];
+
+document.getElementById('archivo').addEventListener('change', function() {
+  const fn = document.getElementById('file-name');
+  if (this.files[0]) { fn.textContent = '✅ ' + this.files[0].name; fn.style.display = 'block'; }
+});
 
 async function parsear() {
   const archivo  = document.getElementById('archivo').files[0];
-  const vigencia = document.getElementById('vigencia').value.trim();
-
-  if (!archivo)  return mostrarAlerta('Selecciona un archivo Excel primero.');
-  if (!vigencia) return mostrarAlerta('Escribe la vigencia antes de continuar.');
+  const vigencia = document.getElementById('vigencia-excel').value.trim();
+  if (!archivo)  return mostrarAlerta('alerta-excel', 'Selecciona un archivo Excel primero.');
+  if (!vigencia) return mostrarAlerta('alerta-excel', 'Escribe la vigencia antes de continuar.');
 
   document.getElementById('btn-parsear').disabled = true;
   document.getElementById('spinner-parsear').style.display = 'block';
   document.getElementById('seccion-tabla').style.display = 'none';
-  document.getElementById('btn-generar').style.display = 'none';
+  document.getElementById('btn-generar-excel').style.display = 'none';
 
   const form = new FormData();
   form.append('archivo', archivo);
-
   try {
     const res  = await fetch('/parsear', { method: 'POST', body: form });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
 
-    filasData = data.filas;
-    renderTabla(filasData);
+    filasExcel = data.filas;
+    renderTablaExcel(filasExcel);
     document.getElementById('seccion-tabla').style.display = 'block';
-    document.getElementById('btn-generar').style.display = 'block';
-    document.getElementById('badge-total').textContent = filasData.length + ' ofertas';
+    document.getElementById('btn-generar-excel').style.display = 'block';
+    document.getElementById('badge-total').textContent = filasExcel.length + ' ofertas';
     document.getElementById('seccion-tabla').scrollIntoView({ behavior: 'smooth' });
   } catch(e) {
-    mostrarAlerta('❌ ' + e.message);
+    mostrarAlerta('alerta-excel', '❌ ' + e.message);
   } finally {
     document.getElementById('btn-parsear').disabled = false;
     document.getElementById('spinner-parsear').style.display = 'none';
   }
 }
 
-function renderTabla(filas) {
+function renderTablaExcel(filas) {
   const tbody = document.getElementById('tabla-body');
   tbody.innerHTML = '';
   filas.forEach((f, i) => {
@@ -376,9 +622,9 @@ function renderTabla(filas) {
     tr.innerHTML = `
       <td>${f.CODIGO}</td>
       <td class="col-desc" title="${f.DESCRIPCION}">${f.DESCRIPCION}</td>
-      <td><input value="${f.TIPO}"    onchange="actualizar(${i},'TIPO',this.value)"></td>
-      <td><input value="${f.MARCA}"   onchange="actualizar(${i},'MARCA',this.value)"></td>
-      <td><input value="${f.DETALLE}" onchange="actualizar(${i},'DETALLE',this.value)"></td>
+      <td><input value="${f.TIPO}"    onchange="filasExcel[${i}].TIPO=this.value.trim().toUpperCase()"></td>
+      <td><input value="${f.MARCA}"   onchange="filasExcel[${i}].MARCA=this.value.trim().toUpperCase()"></td>
+      <td><input value="${f.DETALLE}" onchange="filasExcel[${i}].DETALLE=this.value.trim().toUpperCase()"></td>
       <td class="col-precio">${f['PRECIO OFERTA']}</td>
       <td class="col-precio" style="color:#888">${f['PRECIO NORMAL']}</td>
     `;
@@ -386,51 +632,324 @@ function renderTabla(filas) {
   });
 }
 
-function actualizar(idx, campo, valor) {
-  filasData[idx][campo] = valor.trim().toUpperCase();
-}
+// ── GENERAR PDF (compartido) ─────────────────────────────────────────────────
+async function generarPDF(modo) {
+  const esExcel = (modo === 'excel');
+  const vigencia = document.getElementById(esExcel ? 'vigencia-excel' : 'vigencia-scan').value.trim();
+  const filas    = esExcel ? filasExcel : filasScanner;
+  const spinnerId = esExcel ? 'spinner-generar-excel' : 'spinner-generar-scan';
+  const okId      = esExcel ? 'ok-excel'              : 'ok-scan';
+  const errId     = esExcel ? 'alerta-excel'          : 'alerta-scan';
+  const btnWrap   = document.getElementById(esExcel ? 'btn-generar-excel' : 'btn-generar-scan');
 
-async function generarPDF() {
-  const vigencia       = document.getElementById('vigencia').value.trim();
-  const mostrarPrecio  = document.getElementById('incluir-precio').checked;
-  if (!vigencia) return mostrarAlerta('Escribe la vigencia.');
-  if (!filasData.length) return mostrarAlerta('No hay datos para generar.');
+  if (!vigencia) return mostrarAlerta(errId, 'Escribe la vigencia.');
+  if (!filas.length) return mostrarAlerta(errId, 'No hay datos para generar.');
 
-  document.getElementById('btn-generar').querySelector('button').disabled = true;
-  document.getElementById('spinner-generar').style.display = 'block';
+  btnWrap.querySelector('button').disabled = true;
+  document.getElementById(spinnerId).style.display = 'block';
 
   try {
     const res = await fetch('/generar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filas: filasData, vigencia, mostrar_precio: mostrarPrecio })
+      body: JSON.stringify({ filas, vigencia, modo })
     });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Error'); }
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Error generando PDF');
-    }
-
-    // Descargar el PDF
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = 'Cenefas.pdf';
-    a.click();
+    a.href = url; a.download = 'Cenefas.pdf'; a.click();
     URL.revokeObjectURL(url);
-
-    const ok = document.getElementById('alerta-ok');
-    ok.textContent = '✅ PDF generado correctamente';
-    ok.style.display = 'block';
-    setTimeout(() => ok.style.display = 'none', 4000);
+    mostrarAlerta(okId, '✅ PDF generado correctamente', 'success');
   } catch(e) {
-    mostrarAlerta('❌ ' + e.message);
+    mostrarAlerta(errId, '❌ ' + e.message);
   } finally {
-    document.getElementById('btn-generar').querySelector('button').disabled = false;
-    document.getElementById('spinner-generar').style.display = 'none';
+    btnWrap.querySelector('button').disabled = false;
+    document.getElementById(spinnerId).style.display = 'none';
   }
 }
+
+// ── ESCÁNER ──────────────────────────────────────────────────────────────────
+let filasScanner    = [];
+let camaraActiva    = false;
+let ultimoCodigo    = '';
+let cooldown        = false;
+
+function toggleCamara() {
+  if (camaraActiva) pararCamara();
+  else iniciarCamara();
+}
+
+function iniciarCamara() {
+  const wrap = document.getElementById('camara-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('btn-camara').textContent = '⏹ Detener cámara';
+
+  Quagga.init({
+    inputStream: {
+      name: 'Live',
+      type: 'LiveStream',
+      target: document.getElementById('video-el'),
+      constraints: { facingMode: 'environment', width: 640, height: 480 }
+    },
+    decoder: {
+      readers: ['ean_reader','ean_8_reader','code_128_reader','upc_reader','upc_e_reader','code_39_reader']
+    },
+    locate: true
+  }, err => {
+    if (err) {
+      mostrarAlerta('alerta-scan', '❌ No se pudo acceder a la cámara: ' + err.message);
+      wrap.style.display = 'none';
+      document.getElementById('btn-camara').textContent = '📷 Activar cámara';
+      return;
+    }
+    Quagga.start();
+    camaraActiva = true;
+  });
+
+  Quagga.onDetected(onCodigoDetectado);
+}
+
+function pararCamara() {
+  if (!camaraActiva) return;
+  Quagga.stop();
+  camaraActiva = false;
+  document.getElementById('camara-wrap').style.display = 'none';
+  document.getElementById('btn-camara').textContent = '📷 Activar cámara';
+  document.getElementById('scan-result').textContent = '';
+}
+
+async function onCodigoDetectado(result) {
+  const codigo = result.codeResult.code;
+  if (cooldown || codigo === ultimoCodigo) return;
+  cooldown = true;
+  ultimoCodigo = codigo;
+  setTimeout(() => { cooldown = false; ultimoCodigo = ''; }, 2500);
+
+  document.getElementById('scan-result').textContent = '🔍 ' + codigo;
+  await procesarCodigo(codigo);
+}
+
+async function buscarManual() {
+  const codigo = document.getElementById('cod-manual').value.trim();
+  if (!codigo) return;
+  document.getElementById('cod-manual').value = '';
+  await procesarCodigo(codigo);
+}
+
+async function procesarCodigo(codigo) {
+  // ¿Ya está en la lista?
+  if (filasScanner.find(f => f.CODIGO === codigo)) {
+    mostrarAlerta('warn-scan', `⚠️ El código ${codigo} ya está en la lista.`, 'warn', 3000);
+    return;
+  }
+
+  try {
+    const res  = await fetch('/buscar_codigo?codigo=' + encodeURIComponent(codigo));
+    const data = await res.json();
+
+    if (data.encontrado) {
+      const p = data.producto;
+      agregarAScan({
+        CODIGO:  p.codigo,
+        TIPO:    p.tipo,
+        MARCA:   p.marca,
+        DETALLE: p.detalle,
+        'PRECIO OFERTA': '',
+        'PRECIO NORMAL': '',
+      });
+      document.getElementById('scan-result').textContent = '✅ ' + (p.marca || p.tipo || codigo);
+    } else {
+      // Abrir modal para añadir
+      abrirModalNuevoDesdeScanner(codigo);
+    }
+  } catch(e) {
+    mostrarAlerta('alerta-scan', '❌ Error buscando código: ' + e.message);
+  }
+}
+
+function agregarAScan(fila) {
+  filasScanner.push(fila);
+  renderScanLista();
+  document.getElementById('scan-lista-wrap').style.display = 'block';
+  document.getElementById('btn-generar-scan').style.display = 'block';
+  document.getElementById('badge-scan').textContent = filasScanner.length;
+}
+
+function renderScanLista() {
+  const wrap = document.getElementById('scan-lista');
+  wrap.innerHTML = '';
+  filasScanner.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'scan-item';
+    div.innerHTML = `
+      <div class="scan-item-info">
+        <div class="scan-item-cod">${f.CODIGO}</div>
+        <div class="scan-item-marca">${f.MARCA || f.TIPO || '—'}</div>
+        <div class="scan-item-det">${[f.TIPO, f.DETALLE].filter(Boolean).join(' · ')}</div>
+      </div>
+      <button class="scan-item-del" onclick="eliminarScan(${i})" title="Quitar">✕</button>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+function eliminarScan(i) {
+  filasScanner.splice(i, 1);
+  renderScanLista();
+  document.getElementById('badge-scan').textContent = filasScanner.length;
+  if (!filasScanner.length) {
+    document.getElementById('scan-lista-wrap').style.display = 'none';
+    document.getElementById('btn-generar-scan').style.display = 'none';
+  }
+}
+
+// ── BASE DE DATOS ────────────────────────────────────────────────────────────
+let dbProductos = [];
+
+async function cargarDB() {
+  const q = document.getElementById('db-buscar').value.trim();
+  const res  = await fetch('/db/productos?q=' + encodeURIComponent(q));
+  const data = await res.json();
+  dbProductos = data.productos;
+  renderDB(dbProductos);
+}
+
+function renderDB(lista) {
+  const wrap = document.getElementById('db-lista');
+  document.getElementById('db-count').textContent = lista.length + ' productos';
+  if (!lista.length) {
+    wrap.innerHTML = '<p style="text-align:center;padding:20px;color:#aaa;font-size:0.85rem">Sin resultados</p>';
+    return;
+  }
+  wrap.innerHTML = lista.map((p, i) => `
+    <div class="db-item">
+      <div class="db-item-info">
+        <div class="db-item-cod">${p.codigo}</div>
+        <div class="db-item-main">${p.marca || p.tipo || '—'}</div>
+        <div class="db-item-det">${[p.tipo, p.detalle].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="db-item-actions">
+        <button class="btn-small btn-outline" onclick="abrirModalEditar(${i})">✏️</button>
+        <button class="btn-small btn-danger"  onclick="eliminarDB('${p.codigo}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function eliminarDB(codigo) {
+  if (!confirm('¿Eliminar el producto ' + codigo + '?')) return;
+  await fetch('/db/productos/' + encodeURIComponent(codigo), { method: 'DELETE' });
+  cargarDB();
+}
+
+async function importarDB() {
+  const f = document.getElementById('archivo-db').files[0];
+  if (!f) return;
+  const form = new FormData();
+  form.append('archivo', f);
+  document.getElementById('ok-import').style.display  = 'none';
+  document.getElementById('err-import').style.display = 'none';
+  try {
+    const res  = await fetch('/db/importar', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error);
+    mostrarAlerta('ok-import', `✅ ${data.insertados} nuevos · ${data.actualizados} actualizados`, 'success', 0);
+    cargarDB();
+  } catch(e) {
+    mostrarAlerta('err-import', '❌ ' + e.message, 'error', 0);
+  }
+  document.getElementById('archivo-db').value = '';
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+let modalModo         = 'nuevo'; // 'nuevo' | 'editar'
+let modalCodigoScan   = '';
+
+function abrirModalNuevo() {
+  modalModo = 'nuevo';
+  document.getElementById('modal-title').textContent = 'Nuevo producto';
+  document.getElementById('modal-codigo').value = '';
+  document.getElementById('modal-codigo').readOnly = false;
+  document.getElementById('modal-tipo').value = '';
+  document.getElementById('modal-marca').value = '';
+  document.getElementById('modal-detalle').value = '';
+  document.getElementById('modal-codigo-orig').value = '';
+  modalCodigoScan = '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function abrirModalNuevoDesdeScanner(codigo) {
+  modalModo = 'nuevo';
+  modalCodigoScan = codigo;
+  document.getElementById('modal-title').textContent = '⚠️ Código no encontrado — Añadir';
+  document.getElementById('modal-codigo').value = codigo;
+  document.getElementById('modal-codigo').readOnly = true;
+  document.getElementById('modal-tipo').value = '';
+  document.getElementById('modal-marca').value = '';
+  document.getElementById('modal-detalle').value = '';
+  document.getElementById('modal-codigo-orig').value = '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function abrirModalEditar(idx) {
+  const p = dbProductos[idx];
+  modalModo = 'editar';
+  document.getElementById('modal-title').textContent = 'Editar producto';
+  document.getElementById('modal-codigo').value = p.codigo;
+  document.getElementById('modal-codigo').readOnly = true;
+  document.getElementById('modal-tipo').value = p.tipo;
+  document.getElementById('modal-marca').value = p.marca;
+  document.getElementById('modal-detalle').value = p.detalle;
+  document.getElementById('modal-codigo-orig').value = p.codigo;
+  modalCodigoScan = '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function cerrarModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) cerrarModalBtn();
+}
+function cerrarModalBtn() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+async function guardarProducto() {
+  const codigo  = document.getElementById('modal-codigo').value.trim();
+  const tipo    = document.getElementById('modal-tipo').value.trim();
+  const marca   = document.getElementById('modal-marca').value.trim();
+  const detalle = document.getElementById('modal-detalle').value.trim();
+
+  if (!codigo) { alert('El código es obligatorio'); return; }
+
+  const body = { codigo, tipo, marca, detalle };
+
+  let res;
+  if (modalModo === 'editar') {
+    res = await fetch('/db/productos/' + encodeURIComponent(codigo), {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+  } else {
+    res = await fetch('/db/productos', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+  }
+
+  const data = await res.json();
+  if (!res.ok || data.error) { alert(data.error); return; }
+
+  cerrarModalBtn();
+
+  // Si venía del escáner, añadirlo a la lista de escaneo
+  if (modalCodigoScan) {
+    agregarAScan({ CODIGO: codigo, TIPO: tipo.toUpperCase(), MARCA: marca.toUpperCase(), DETALLE: detalle.toUpperCase(), 'PRECIO OFERTA':'', 'PRECIO NORMAL':'' });
+    document.getElementById('scan-result').textContent = '✅ ' + (marca || tipo || codigo) + ' (guardado)';
+  }
+
+  // Recargar DB si estamos en esa pestaña
+  if (document.getElementById('panel-db').classList.contains('active')) cargarDB();
+}
+
 </script>
 </body>
 </html>
