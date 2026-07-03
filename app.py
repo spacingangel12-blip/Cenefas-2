@@ -9,6 +9,30 @@ app = Flask(__name__)
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'productos.db')
 
 # ─────────────────────────────────────────────
+#  Helpers de normalización
+# ─────────────────────────────────────────────
+
+def normalize_codigo(val):
+    """Convierte notación científica/float a string de código entero.
+    Ej: '2.0803636E7' → '20803636', '7.501E12' → '7501000000000'
+    """
+    s = str(val).strip()
+    if s.lower() in ('nan', '', 'none', 'na', '#n/a'):
+        return ''
+    try:
+        return str(int(float(s)))
+    except (ValueError, OverflowError):
+        return s
+
+def normalize_col(col):
+    """Quita acentos, trim y mayúsculas en nombre de columna."""
+    col = col.strip().upper()
+    for src, dst in [('Á','A'),('É','E'),('Í','I'),('Ó','O'),('Ú','U'),
+                     ('Ñ','N'),('Ü','U')]:
+        col = col.replace(src, dst)
+    return col
+
+# ─────────────────────────────────────────────
 #  Base de datos SQLite
 # ─────────────────────────────────────────────
 
@@ -16,8 +40,6 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
-
-CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'catalogo.csv')
 
 def init_db():
     with get_db() as conn:
@@ -31,50 +53,104 @@ def init_db():
         ''')
         conn.commit()
 
-def cargar_catalogo_csv():
-    """
-    Carga catalogo.csv a la base de datos al arrancar.
-    - Inserta productos nuevos (que no existan en la BD).
-    - No sobreescribe productos editados manualmente.
-    Si quieres forzar una actualización completa, borra productos.db antes de arrancar.
-    """
-    if not os.path.exists(CSV_PATH):
-        return
-
+def _leer_archivo(archivo, nombre):
+    """Lee un archivo como DataFrame. Detecta TSV especial, CSV y Excel."""
+    # Intenta como Excel real primero
     try:
-        df = pd.read_csv(CSV_PATH, dtype=str).fillna('')
-        df.columns = [c.strip().upper() for c in df.columns]
-        if 'CODIGO' not in df.columns:
-            print('[catalogo] El CSV no tiene columna CODIGO, se omite.')
-            return
+        df = pd.read_excel(archivo, dtype=str, engine='openpyxl')
+        return df.fillna('')
+    except Exception:
+        pass
+    # Fallback: texto tabulado (formato exportado con encabezado '## Sheet:')
+    try:
+        archivo.seek(0)
+        primera = archivo.readline()
+        if isinstance(primera, bytes):
+            primera = primera.decode('utf-8', errors='replace')
+        skiprows = 2 if primera.strip().startswith('##') else 0
+        archivo.seek(0)
+        df = pd.read_csv(archivo, sep='\t', skiprows=skiprows, dtype=str)
+        return df.fillna('')
+    except Exception:
+        pass
+    # Último recurso: CSV estándar
+    archivo.seek(0)
+    df = pd.read_csv(archivo, dtype=str)
+    return df.fillna('')
 
-        insertados = 0
-        with get_db() as conn:
-            for _, row in df.iterrows():
-                cod = str(row.get('CODIGO', '')).strip()
-                if not cod:
-                    continue
-                existe = conn.execute(
-                    'SELECT 1 FROM productos WHERE codigo=?', (cod,)
-                ).fetchone()
-                if not existe:
-                    conn.execute(
-                        'INSERT INTO productos (codigo, tipo, marca, detalle) VALUES (?,?,?,?)',
-                        (
-                            cod,
-                            str(row.get('TIPO',    '')).strip().upper(),
-                            str(row.get('MARCA',   '')).strip().upper(),
-                            str(row.get('DETALLE', '')).strip().upper(),
-                        )
-                    )
-                    insertados += 1
-            conn.commit()
-        print(f'[catalogo] {insertados} productos nuevos cargados desde catalogo.csv')
+def _importar_df(df):
+    """
+    Importa un DataFrame a la BD.
+    - Formato catálogo (columna DESCRIPCION presente, sin TIPO/DETALLE):
+        CODIGO, DESCRIPCION → parse_descripcion → tipo/marca/detalle
+        CATEGORIA/SUBCATEGORIA y MARCA se usan como respaldo.
+    - Formato estándar (columnas TIPO, MARCA, DETALLE).
+    Retorna (insertados, actualizados).
+    """
+    df.columns = [normalize_col(c) for c in df.columns]
+    cols = list(df.columns)
+
+    if 'CODIGO' not in cols:
+        raise ValueError('El archivo debe tener columna CODIGO')
+
+    # Detectar formato catálogo vs estándar
+    is_catalog = 'DESCRIPCION' in cols and 'TIPO' not in cols
+
+    insertados = actualizados = 0
+    with get_db() as conn:
+        for _, row in df.iterrows():
+            cod = normalize_codigo(row.get('CODIGO', ''))
+            if not cod:
+                continue
+
+            if is_catalog:
+                descripcion  = str(row.get('DESCRIPCION', '')).strip()
+                marca_col    = str(row.get('MARCA', '')).strip().upper()
+                categoria    = str(row.get('CATEGORIA', '')).strip().upper()
+                subcategoria = str(row.get('SUBCATEGORIA', '')).strip().upper()
+
+                parsed  = parse_descripcion(descripcion) if descripcion else {}
+                tipo    = (parsed.get('TIPO') or
+                           (subcategoria if subcategoria not in ('', 'SIN SUBCATEGORIA')
+                            else categoria))
+                marca   = parsed.get('MARCA') or marca_col
+                detalle = parsed.get('DETALLE') or descripcion[:80]
+            else:
+                tipo    = str(row.get('TIPO',    '')).strip().upper() if 'TIPO'    in cols else ''
+                marca   = str(row.get('MARCA',   '')).strip().upper() if 'MARCA'   in cols else ''
+                detalle = str(row.get('DETALLE', '')).strip().upper() if 'DETALLE' in cols else ''
+
+            exists = conn.execute('SELECT 1 FROM productos WHERE codigo=?', (cod,)).fetchone()
+            if exists:
+                conn.execute('UPDATE productos SET tipo=?, marca=?, detalle=? WHERE codigo=?',
+                             (tipo, marca, detalle, cod))
+                actualizados += 1
+            else:
+                conn.execute('INSERT INTO productos (codigo, tipo, marca, detalle) VALUES (?,?,?,?)',
+                             (cod, tipo, marca, detalle))
+                insertados += 1
+        conn.commit()
+
+    return insertados, actualizados
+
+def cargar_catalogo_inicial():
+    """
+    Al arrancar carga el catálogo desde catalogo.csv si existe.
+    Solo inserta nuevos (nunca sobreescribe ediciones manuales).
+    """
+    base = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(base, 'catalogo.csv')
+    if not os.path.exists(csv_path):
+        return
+    try:
+        df = pd.read_csv(csv_path, dtype=str).fillna('')
+        ins, _ = _importar_df(df)
+        print(f'[catalogo] {ins} productos nuevos cargados desde catalogo.csv')
     except Exception as e:
-        print(f'[catalogo] Error cargando CSV: {e}')
+        print(f'[catalogo] Error cargando catalogo.csv: {e}')
 
 init_db()
-cargar_catalogo_csv()
+cargar_catalogo_inicial()
 
 
 # ─────────────────────────────────────────────
@@ -245,57 +321,24 @@ def eliminar_producto(codigo):
 
 @app.route('/db/importar', methods=['POST'])
 def importar_csv():
-    """Importa un CSV/Excel con columnas: CODIGO, TIPO, MARCA, DETALLE"""
+    """
+    Importa CSV o Excel a la BD.
+    Acepta dos formatos:
+      • Estándar:  columnas CODIGO, TIPO, MARCA, DETALLE
+      • Catálogo:  columnas CODIGO, DESCRIPCIÓN/DESCRIPCION, CATEGORÍA, SUBCATEGORÍA, MARCA
+                   (el formato del archivo de productos de la tienda)
+    También acepta el formato exportado como texto tabulado con encabezado '## Sheet:'.
+    """
     if 'archivo' not in request.files:
         return jsonify({'error': 'No se recibió archivo'}), 400
 
     archivo = request.files['archivo']
-    nombre  = archivo.filename.lower()
-
     try:
-        if nombre.endswith('.csv'):
-            df = pd.read_csv(archivo)
-        else:
-            df = pd.read_excel(archivo)
-
-        df.columns = [c.strip().upper() for c in df.columns]
-        if 'CODIGO' not in df.columns:
-            return jsonify({'error': 'El archivo debe tener columna CODIGO'}), 400
-
-        insertados = 0
-        actualizados = 0
-        with get_db() as conn:
-            for _, row in df.iterrows():
-                cod = str(row.get('CODIGO', '')).strip()
-                if not cod or cod == 'nan':
-                    continue
-                tipo    = str(row.get('TIPO',    '')).strip().upper() if 'TIPO'    in df.columns else ''
-                marca   = str(row.get('MARCA',   '')).strip().upper() if 'MARCA'   in df.columns else ''
-                detalle = str(row.get('DETALLE', '')).strip().upper() if 'DETALLE' in df.columns else ''
-
-                exists = conn.execute(
-                    'SELECT 1 FROM productos WHERE codigo=?', (cod,)
-                ).fetchone()
-
-                if exists:
-                    conn.execute(
-                        'UPDATE productos SET tipo=?, marca=?, detalle=? WHERE codigo=?',
-                        (tipo, marca, detalle, cod)
-                    )
-                    actualizados += 1
-                else:
-                    conn.execute(
-                        'INSERT INTO productos (codigo, tipo, marca, detalle) VALUES (?,?,?,?)',
-                        (cod, tipo, marca, detalle)
-                    )
-                    insertados += 1
-            conn.commit()
-
-        return jsonify({
-            'ok': True,
-            'insertados': insertados,
-            'actualizados': actualizados
-        })
+        df = _leer_archivo(archivo, archivo.filename.lower())
+        insertados, actualizados = _importar_df(df)
+        return jsonify({'ok': True, 'insertados': insertados, 'actualizados': actualizados})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
