@@ -240,6 +240,7 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
 .toggle-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   background: white;
   border-radius: 11px;
@@ -247,20 +248,12 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   padding: 13px 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.07);
   cursor: pointer;
-}
-.toggle-row label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  margin: 0;
-  flex: 1;
+  user-select: none;
   font-size: 0.88rem;
   font-weight: 600;
   color: #1a1a2e;
-  user-select: none;
 }
-.toggle-row .toggle-desc {
+.toggle-desc {
   font-size: 0.75rem;
   color: #888;
   font-weight: 400;
@@ -280,7 +273,6 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   background: #dde0e8;
   border-radius: 26px;
   transition: background 0.2s;
-  cursor: pointer;
 }
 .tog-slider::before {
   content: '';
@@ -495,18 +487,16 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   </div>
 
   <div id="toggle-precio-excel" style="display:none;">
-    <div class="toggle-row" onclick="document.getElementById('con-precio-excel').click()">
-      <label>
-        <span class="tog">
-          <input type="checkbox" id="con-precio-excel" checked onclick="event.stopPropagation()">
-          <span class="tog-slider"></span>
-        </span>
-        <span>
-          Incluir precio de oferta
-          <span class="toggle-desc">Desmarca para generar cenefas sin precio</span>
-        </span>
-      </label>
-    </div>
+    <label class="toggle-row" for="con-precio-excel">
+      <span>
+        Incluir precio de oferta
+        <span class="toggle-desc">Desmarca para generar cenefas sin precio</span>
+      </span>
+      <span class="tog">
+        <input type="checkbox" id="con-precio-excel" checked>
+        <span class="tog-slider"></span>
+      </span>
+    </label>
   </div>
 
   <div id="btn-generar-excel" style="display:none; margin:14px;">
@@ -568,18 +558,16 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   </div>
 
   <div id="toggle-precio-scan" style="display:none;">
-    <div class="toggle-row" onclick="document.getElementById('con-precio-scan').click()">
-      <label>
-        <span class="tog">
-          <input type="checkbox" id="con-precio-scan" onclick="event.stopPropagation()">
-          <span class="tog-slider"></span>
-        </span>
-        <span>
-          Incluir precio de oferta
-          <span class="toggle-desc">Activa si los productos tienen precio asignado</span>
-        </span>
-      </label>
-    </div>
+    <label class="toggle-row" for="con-precio-scan">
+      <span>
+        Incluir precio de oferta
+        <span class="toggle-desc">Activa si los productos tienen precio asignado</span>
+      </span>
+      <span class="tog">
+        <input type="checkbox" id="con-precio-scan">
+        <span class="tog-slider"></span>
+      </span>
+    </label>
   </div>
 
   <div id="btn-generar-scan" style="display:none; margin:14px;">
