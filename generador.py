@@ -67,7 +67,7 @@ def normaliza_oferta(po):
     s = re.sub(r'\s+', ' ', s)
     return s
 
-def draw_cenefa(c, base_y, row, vigencia, mostrar_precio=True):
+def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
     top = base_y + HALF
 
     tipo   = str(row.get('TIPO',   '') or '').strip()
@@ -75,7 +75,7 @@ def draw_cenefa(c, base_y, row, vigencia, mostrar_precio=True):
     det    = str(row.get('DETALLE','') or '').strip()
     cod    = str(row.get('CODIGO', '') or '').strip()
     pn_raw = str(row.get('PRECIO NORMAL', '') or '').strip()
-    po_raw = normaliza_oferta(row.get('PRECIO OFERTA', ''))
+    po_raw = '' if sin_precio else normaliza_oferta(row.get('PRECIO OFERTA', ''))
 
     tiene_marca = marca and marca not in ('', 'nan')
     tiene_tipo  = tipo  and tipo  not in ('', 'nan')
@@ -172,7 +172,8 @@ def draw_cenefa(c, base_y, row, vigencia, mostrar_precio=True):
         oz_top = top - 38 * mm
         oz_bot = top - 88 * mm
 
-    if mostrar_precio:
+    # ── Zona de oferta (solo si hay precio) ──────────────────────────────────
+    if not sin_precio and po_raw:
         offer_raw = po_raw
         no_d  = ['%', 'AHORRO', 'DESCUENTO', 'LLEVA', 'POR', '$']
         add_d = not any(k in offer_raw for k in no_d)
@@ -219,6 +220,7 @@ def draw_cenefa(c, base_y, row, vigencia, mostrar_precio=True):
             cy = oz_bot + (oz_h - s * 1.15) / 2
             hollow(c, offer, 'Passion', s, cy, min_s=18)
 
+        # Precio anterior (tachado)
         show_prev = False
         if pn_raw and pn_raw not in ('nan', '', 'NaN'):
             pn_fmt   = fmt_precio(pn_raw)
@@ -237,9 +239,8 @@ def draw_cenefa(c, base_y, row, vigencia, mostrar_precio=True):
             c.setStrokeColor(HexColor('#333333'))
             c.setLineWidth(0.5)
             c.line(tx, prev_rl + fs*0.38, tx+tw, prev_rl + fs*0.38)
-    # Si mostrar_precio es False, se deja el espacio (oz_top..oz_bot y la línea
-    # de precio anterior) completamente en blanco, sin dibujar nada.
 
+    # ── Código y vigencia ─────────────────────────────────────────────────────
     info_rl = top - 99 * mm
     if cod and cod != 'nan':
         c.setFont('MontR', 7)
@@ -252,12 +253,12 @@ def draw_cenefa(c, base_y, row, vigencia, mostrar_precio=True):
     c.drawString(MAR + (USEW - vtw) / 2, info_rl, vigencia)
 
 
-def generar_pdf(filas, vigencia, output_path, mostrar_precio=True):
+def generar_pdf(filas, vigencia, output_path, sin_precio=False):
     cv = canvas.Canvas(output_path, pagesize=(PW, PH))
     total = len(filas)
     for i in range(0, total, 2):
-        draw_cenefa(cv, HALF, filas[i], vigencia, mostrar_precio)
+        draw_cenefa(cv, HALF, filas[i], vigencia, sin_precio=sin_precio)
         if i + 1 < total:
-            draw_cenefa(cv, 0, filas[i+1], vigencia, mostrar_precio)
+            draw_cenefa(cv, 0, filas[i+1], vigencia, sin_precio=sin_precio)
         cv.showPage()
     cv.save()
