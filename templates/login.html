@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Acceso — Cenefas Publicitarias</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 36px 28px 32px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+.logo {
+  text-align: center;
+  font-size: 2.2rem;
+  margin-bottom: 6px;
+}
+h1 {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.sub {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 28px;
+}
+label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #444;
+  display: block;
+  margin-bottom: 5px;
+}
+input[type=text], input[type=password] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #dde0e8;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+}
+input:focus { border-color: #4f46e5; }
+.btn {
+  width: 100%;
+  padding: 14px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 11px;
+  font-size: 0.97rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 4px;
+}
+.btn:active { background: #3730a3; }
+.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 0.84rem;
+  margin-bottom: 16px;
+  display: {% if error %}block{% else %}none{% endif %};
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🏷️</div>
+  <h1>Cenefas Publicitarias</h1>
+  <p class="sub">Inicia sesión para continuar</p>
+
+  <div class="error">{{ error }}</div>
+
+  <form method="POST" action="/login">
+    <label for="usuario">Usuario</label>
+    <input type="text" id="usuario" name="usuario"
+           placeholder="Tu usuario" autocomplete="username" required>
+
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" name="password"
+           placeholder="••••••••" autocomplete="current-password" required>
+
+    <button class="btn" type="submit">Entrar</button>
+  </form>
+</div>
+</body>
+</html>
