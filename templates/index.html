@@ -241,15 +241,27 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  background: #000;
+  background: #111;
   aspect-ratio: 4/3;
   max-height: 260px;
 }
-#video-el {
+/* QuaggaJS inyecta su propio <video> y <canvas> dentro de #qr-viewport */
+#qr-viewport {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+#qr-viewport video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  position: absolute;
+  top: 0; left: 0;
+}
+/* Ocultar el canvas de dibujo de QuaggaJS (evita la pantalla negra) */
+#qr-viewport canvas {
+  display: none;
 }
 .scan-line {
   position: absolute;
@@ -444,7 +456,7 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
       📷 Activar cámara
     </button>
     <div id="camara-wrap" style="display:none">
-      <video id="video-el" autoplay playsinline muted></video>
+      <div id="qr-viewport"></div>
       <div class="scan-corners"></div>
       <div class="scan-line"></div>
     </div>
@@ -492,7 +504,8 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   <div class="card">
     <h2>Importar desde archivo</h2>
     <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">
-      CSV o Excel con columnas: <strong>CODIGO, TIPO, MARCA, DETALLE</strong>
+      Acepta el <strong>Excel de productos de la tienda</strong> directamente,
+      o un CSV/Excel estándar con columnas <strong>CODIGO, TIPO, MARCA, DETALLE</strong>.
     </p>
     <div class="upload-zone" style="padding:16px">
       <input type="file" id="archivo-db" accept=".xlsx,.xls,.csv" onchange="importarDB()">
@@ -686,11 +699,12 @@ function iniciarCamara() {
   wrap.style.display = 'block';
   document.getElementById('btn-camara').textContent = '⏹ Detener cámara';
 
+  // QuaggaJS necesita un div contenedor, NO un elemento <video>
   Quagga.init({
     inputStream: {
       name: 'Live',
       type: 'LiveStream',
-      target: document.getElementById('video-el'),
+      target: document.getElementById('qr-viewport'),
       constraints: { facingMode: 'environment', width: 640, height: 480 }
     },
     decoder: {
@@ -706,13 +720,14 @@ function iniciarCamara() {
     }
     Quagga.start();
     camaraActiva = true;
+    // Registrar DENTRO del callback para evitar duplicados
+    Quagga.onDetected(onCodigoDetectado);
   });
-
-  Quagga.onDetected(onCodigoDetectado);
 }
 
 function pararCamara() {
   if (!camaraActiva) return;
+  Quagga.offDetected(onCodigoDetectado);  // Des-registrar handler
   Quagga.stop();
   camaraActiva = false;
   document.getElementById('camara-wrap').style.display = 'none';
