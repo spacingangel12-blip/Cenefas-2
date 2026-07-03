@@ -208,6 +208,12 @@ def generar():
     vigencia = data.get('vigencia', '').strip()
     modo     = data.get('modo', 'excel')   # 'excel' | 'scanner'
 
+    # sin_precio puede venir explícito del frontend (toggle);
+    # si no, se infiere por modo (scanner → sin precio por defecto)
+    sin_precio_flag = data.get('sin_precio')
+    if sin_precio_flag is None:
+        sin_precio_flag = (modo == 'scanner')
+
     if not filas:
         return jsonify({'error': 'No hay filas para generar'}), 400
     if not vigencia:
@@ -215,7 +221,7 @@ def generar():
 
     tmp = os.path.join(tempfile.gettempdir(), f'cenefas_{uuid.uuid4().hex}.pdf')
     try:
-        generar_pdf(filas, vigencia, tmp, sin_precio=(modo == 'scanner'))
+        generar_pdf(filas, vigencia, tmp, sin_precio=sin_precio_flag)
         return send_file(
             tmp,
             mimetype='application/pdf',
