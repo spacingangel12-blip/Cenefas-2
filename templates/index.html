@@ -259,8 +259,17 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
   position: absolute;
   top: 0; left: 0;
 }
-/* Ocultar el canvas de dibujo de QuaggaJS (evita la pantalla negra) */
+/* Canvas de QuaggaJS: invisible pero presente para que pueda renderizar */
 #qr-viewport canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Ocultar solo el canvas de overlay de detección (líneas de barcode) */
+#qr-viewport canvas.drawingBuffer {
   display: none;
 }
 .scan-line {
@@ -720,6 +729,16 @@ function iniciarCamara() {
     }
     Quagga.start();
     camaraActiva = true;
+
+    // Fix pantalla negra: iOS Safari y Chrome móvil requieren playsinline
+    // QuaggaJS crea el <video> internamente sin estos atributos
+    const vid = document.querySelector('#qr-viewport video');
+    if (vid) {
+      vid.setAttribute('playsinline', '');
+      vid.setAttribute('webkit-playsinline', '');
+      vid.muted = true;
+    }
+
     // Registrar DENTRO del callback para evitar duplicados
     Quagga.onDetected(onCodigoDetectado);
   });
