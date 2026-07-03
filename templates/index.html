@@ -236,6 +236,65 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
 .col-precio { font-weight: 700; color: #1a1a2e; white-space: nowrap; }
 .hint { font-size: 0.73rem; color: #999; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
 
+/* ── Toggle precio ───────────────────────────────────────── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border-radius: 11px;
+  margin: 0 14px 10px;
+  padding: 13px 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  cursor: pointer;
+}
+.toggle-row label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  margin: 0;
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  user-select: none;
+}
+.toggle-row .toggle-desc {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: 400;
+  display: block;
+  margin-top: 1px;
+}
+.tog {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.tog input { opacity: 0; width: 0; height: 0; position: absolute; }
+.tog-slider {
+  position: absolute;
+  inset: 0;
+  background: #dde0e8;
+  border-radius: 26px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+.tog-slider::before {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  left: 3px; top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.tog input:checked + .tog-slider { background: #4f46e5; }
+.tog input:checked + .tog-slider::before { transform: translateX(18px); }
+
 /* ── Escáner ─────────────────────────────────────────────── */
 #camara-wrap {
   position: relative;
@@ -435,6 +494,21 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
     </div>
   </div>
 
+  <div id="toggle-precio-excel" style="display:none;">
+    <div class="toggle-row" onclick="document.getElementById('con-precio-excel').click()">
+      <label>
+        <span class="tog">
+          <input type="checkbox" id="con-precio-excel" checked onclick="event.stopPropagation()">
+          <span class="tog-slider"></span>
+        </span>
+        <span>
+          Incluir precio de oferta
+          <span class="toggle-desc">Desmarca para generar cenefas sin precio</span>
+        </span>
+      </label>
+    </div>
+  </div>
+
   <div id="btn-generar-excel" style="display:none; margin:14px;">
     <button class="btn-primary" onclick="generarPDF('excel')">
       ⬇️ Generar y descargar PDF
@@ -490,6 +564,21 @@ tbody td input:focus { background: #eef2ff; outline: 1px solid #4f46e5; }
         <span class="badge" id="badge-scan">0</span>
       </div>
       <div id="scan-lista" style="border-radius:10px; border:1px solid #eaecf0; overflow:hidden;"></div>
+    </div>
+  </div>
+
+  <div id="toggle-precio-scan" style="display:none;">
+    <div class="toggle-row" onclick="document.getElementById('con-precio-scan').click()">
+      <label>
+        <span class="tog">
+          <input type="checkbox" id="con-precio-scan" onclick="event.stopPropagation()">
+          <span class="tog-slider"></span>
+        </span>
+        <span>
+          Incluir precio de oferta
+          <span class="toggle-desc">Activa si los productos tienen precio asignado</span>
+        </span>
+      </label>
     </div>
   </div>
 
@@ -613,6 +702,7 @@ async function parsear() {
   document.getElementById('btn-parsear').disabled = true;
   document.getElementById('spinner-parsear').style.display = 'block';
   document.getElementById('seccion-tabla').style.display = 'none';
+  document.getElementById('toggle-precio-excel').style.display = 'none';
   document.getElementById('btn-generar-excel').style.display = 'none';
 
   const form = new FormData();
@@ -625,6 +715,7 @@ async function parsear() {
     filasExcel = data.filas;
     renderTablaExcel(filasExcel);
     document.getElementById('seccion-tabla').style.display = 'block';
+    document.getElementById('toggle-precio-excel').style.display = 'block';
     document.getElementById('btn-generar-excel').style.display = 'block';
     document.getElementById('badge-total').textContent = filasExcel.length + ' ofertas';
     document.getElementById('seccion-tabla').scrollIntoView({ behavior: 'smooth' });
@@ -656,13 +747,14 @@ function renderTablaExcel(filas) {
 
 // ── GENERAR PDF (compartido) ─────────────────────────────────────────────────
 async function generarPDF(modo) {
-  const esExcel = (modo === 'excel');
-  const vigencia = document.getElementById(esExcel ? 'vigencia-excel' : 'vigencia-scan').value.trim();
-  const filas    = esExcel ? filasExcel : filasScanner;
+  const esExcel   = (modo === 'excel');
+  const vigencia  = document.getElementById(esExcel ? 'vigencia-excel' : 'vigencia-scan').value.trim();
+  const filas     = esExcel ? filasExcel : filasScanner;
   const spinnerId = esExcel ? 'spinner-generar-excel' : 'spinner-generar-scan';
   const okId      = esExcel ? 'ok-excel'              : 'ok-scan';
   const errId     = esExcel ? 'alerta-excel'          : 'alerta-scan';
   const btnWrap   = document.getElementById(esExcel ? 'btn-generar-excel' : 'btn-generar-scan');
+  const sinPrecio = !document.getElementById(esExcel ? 'con-precio-excel' : 'con-precio-scan').checked;
 
   if (!vigencia) return mostrarAlerta(errId, 'Escribe la vigencia.');
   if (!filas.length) return mostrarAlerta(errId, 'No hay datos para generar.');
@@ -674,7 +766,7 @@ async function generarPDF(modo) {
     const res = await fetch('/generar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filas, vigencia, modo })
+      body: JSON.stringify({ filas, vigencia, modo, sin_precio: sinPrecio })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Error'); }
 
@@ -807,6 +899,7 @@ function agregarAScan(fila) {
   filasScanner.push(fila);
   renderScanLista();
   document.getElementById('scan-lista-wrap').style.display = 'block';
+  document.getElementById('toggle-precio-scan').style.display = 'block';
   document.getElementById('btn-generar-scan').style.display = 'block';
   document.getElementById('badge-scan').textContent = filasScanner.length;
 }
@@ -835,6 +928,7 @@ function eliminarScan(i) {
   document.getElementById('badge-scan').textContent = filasScanner.length;
   if (!filasScanner.length) {
     document.getElementById('scan-lista-wrap').style.display = 'none';
+    document.getElementById('toggle-precio-scan').style.display = 'none';
     document.getElementById('btn-generar-scan').style.display = 'none';
   }
 }
