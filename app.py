@@ -462,6 +462,101 @@ def index():
 #  Modo Excel
 # ─────────────────────────────────────────────
 
+
+# Encabezados esperados (normalizados) y a qué columna canónica corresponden.
+# Se aceptan variantes de acentos/espacios/mayúsculas porque normalize_col()
+# ya limpia eso antes de comparar.
+_ALIAS_COLUMNAS = {
+    'CODIGO':        'CODIGO',
+    'CLAVE':         'CODIGO',
+    'DESCRIPCION':   'DESCRIPCION',
+    'PRECIO NORMAL': 'PRECIO NORMAL',
+    'PRECIO REGULAR':'PRECIO NORMAL',
+    'PRECIO OFERTA': 'PRECIO OFERTA',
+    'PRECIO PROMOCION': 'PRECIO OFERTA',
+    'CATEGORIA':     'CATEGORIA',
+    'GANCHO':        'GANCHO',
+    'SUBCATEGORIA':  'SUBCATEGORIA',
+}
+
+def _detectar_fila_encabezado(df_sin_header, max_filas_buscar=15):
+    """
+    Busca, dentro de las primeras filas del archivo (leído sin header),
+    la fila que contiene los encabezados reales (CODIGO/CLAVE + DESCRIPCION).
+    Devuelve el índice de esa fila o None si no se encontró.
+    """
+    limite = min(max_filas_buscar, len(df_sin_header))
+    for i in range(limite):
+        valores = [normalize_col(str(v)) for v in df_sin_header.iloc[i].tolist() if str(v).strip() and str(v).lower() != 'nan']
+        tiene_codigo = any(v in ('CODIGO', 'CLAVE') for v in valores)
+        tiene_desc   = any(v == 'DESCRIPCION' for v in valores)
+        if tiene_codigo and tiene_desc:
+            return i
+    return None
+
+def _leer_excel_flexible(archivo):
+    """
+    Lee un Excel de oferta/cenefas con estructura variable:
+    - Puede tener filas de título/vigencia antes del encabezado real.
+    - El encabezado puede estar en cualquier fila dentro de las primeras ~15.
+    - Puede haber una primera columna vacía usada solo para sangría.
+    - Puede haber filas de "sección" (ALIMENTOS, PERFUMERIA, HOGAR, etc.)
+      que solo tienen texto en la columna DESCRIPCION y todo lo demás vacío;
+      esas filas se descartan porque no son productos.
+    - Nombres de columnas pueden variar en acentos/espacios/mayúsculas.
+
+    Devuelve un DataFrame con columnas canónicas:
+    CODIGO, DESCRIPCION, PRECIO NORMAL, PRECIO OFERTA, CATEGORIA, GANCHO
+    (las que no existan en el archivo quedan como columna vacía).
+    """
+    archivo.seek(0)
+    crudo = pd.read_excel(archivo, header=None, dtype=str)
+
+    fila_header = _detectar_fila_encabezado(crudo)
+    if fila_header is None:
+        raise ValueError(
+            'No se encontró una fila de encabezado con columnas '
+            '"Codigo" y "Descripcion" en las primeras filas del archivo.'
+        )
+
+    encabezados_raw = crudo.iloc[fila_header].tolist()
+    datos = crudo.iloc[fila_header + 1:].reset_index(drop=True)
+    datos.columns = range(len(datos.columns))
+
+    # Mapear cada columna del archivo a su nombre canónico (o None si no aplica)
+    mapa_col = {}
+    for idx, encabezado in enumerate(encabezados_raw):
+        texto = str(encabezado).strip()
+        if not texto or texto.lower() == 'nan':
+            continue
+        norm = normalize_col(texto)
+        canonico = _ALIAS_COLUMNAS.get(norm)
+        if canonico and canonico not in mapa_col.values():
+            mapa_col[idx] = canonico
+
+    if not any(v == 'CODIGO' for v in mapa_col.values()) or \
+       not any(v == 'DESCRIPCION' for v in mapa_col.values()):
+        raise ValueError(
+            'El archivo debe tener columnas de Código y Descripción '
+            '(se aceptan encabezados como "Codigo", "Clave", "Descripcion").'
+        )
+
+    columnas_finales = ['CODIGO', 'DESCRIPCION', 'PRECIO NORMAL', 'PRECIO OFERTA', 'CATEGORIA', 'GANCHO']
+    df = pd.DataFrame({col: '' for col in columnas_finales}, index=datos.index)
+    for idx, canonico in mapa_col.items():
+        if idx < len(datos.columns):
+            df[canonico] = datos[idx]
+
+    df = df.fillna('')
+
+    # Descartar filas de "sección" (sin código) y filas totalmente vacías.
+    df['CODIGO'] = df['CODIGO'].apply(lambda v: str(v).strip())
+    df['DESCRIPCION'] = df['DESCRIPCION'].apply(lambda v: str(v).strip())
+    df = df[(df['CODIGO'] != '') & (df['CODIGO'].str.lower() != 'nan') & (df['DESCRIPCION'] != '')]
+    df = df.reset_index(drop=True)
+    return df
+
+
 @app.route('/parsear', methods=['POST'])
 @login_required
 def parsear():
@@ -469,26 +564,34 @@ def parsear():
         return jsonify({'error': 'No se recibió archivo'}), 400
     archivo = request.files['archivo']
     try:
-        df_raw = pd.read_excel(archivo, header=3)
-        df_raw.columns = ['DROP','CODIGO','DESCRIPCION','PRECIO NORMAL','PRECIO OFERTA','CATEGORIA','GANCHO']
-        df_raw = df_raw.drop(columns=['DROP'])
-        df_raw = df_raw[df_raw['CODIGO'].notna() & df_raw['DESCRIPCION'].notna()]
-        df_raw = df_raw[df_raw['PRECIO OFERTA'].notna()]
-        df_raw = df_raw.reset_index(drop=True)
+        df_raw = _leer_excel_flexible(archivo)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'Error leyendo Excel: {str(e)}'}), 400
+
+    if df_raw.empty:
+        return jsonify({'error': 'No se encontraron productos con Código y Descripción en el archivo'}), 400
+
     filas = []
     for _, row in df_raw.iterrows():
+        precio_oferta = str(row.get('PRECIO OFERTA', '')).strip()
+        if not precio_oferta or precio_oferta.lower() == 'nan':
+            continue  # sin precio/promoción no se genera cenefa para esa fila
         parsed = parse_descripcion(row['DESCRIPCION'])
         filas.append({
-            'CODIGO':        str(int(row['CODIGO'])) if pd.notna(row['CODIGO']) else '',
+            'CODIGO':        normalize_codigo(row['CODIGO']),
             'DESCRIPCION':   str(row['DESCRIPCION']).strip(),
             'TIPO':          parsed['TIPO'],
             'MARCA':         parsed['MARCA'],
             'DETALLE':       parsed['DETALLE'],
-            'PRECIO NORMAL': str(row['PRECIO NORMAL']) if pd.notna(row['PRECIO NORMAL']) else '',
-            'PRECIO OFERTA': str(row['PRECIO OFERTA']).strip(),
+            'PRECIO NORMAL': '' if str(row.get('PRECIO NORMAL', '')).strip().lower() in ('', 'nan') else str(row['PRECIO NORMAL']).strip(),
+            'PRECIO OFERTA': precio_oferta,
         })
+
+    if not filas:
+        return jsonify({'error': 'No se encontraron filas con precio de oferta/promoción'}), 400
+
     return jsonify({'filas': filas})
 
 

@@ -19,6 +19,20 @@ HALF = PH / 2
 MAR  = 12 * mm
 USEW = PW - 2 * MAR
 
+# ── Calibración para hoja preimpresa ────────────────────────────────────────
+# La hoja física YA trae impresa una franja superior (naranja/roja con el
+# texto "¡Siempre ahorrando, siempre contigo!") y un logo inferior derecho.
+# Este PDF solo dibuja el contenido variable (tipo/marca/detalle/precio)
+# encima de esa hoja, así que hay que "empujar" todo el bloque de texto
+# hacia abajo lo suficiente para que no choque con la franja, y "encoger"
+# la altura útil para que no choque con el logo de abajo.
+#
+# Ajusta estos dos valores según lo que midas en la hoja física real:
+#   TOP_OFFSET    -> cuánto bajar todo el contenido (mm) para librar la franja
+#   BOTTOM_OFFSET -> cuánto subir la línea de "Cód/Vigencia" (mm) para librar el logo
+TOP_OFFSET    = 10 * mm   # valor de arranque, ajustar con la hoja física
+BOTTOM_OFFSET = 0  * mm   # valor de arranque, ajustar con la hoja física
+
 def sw(c, t, f, s): return c.stringWidth(t, f, s)
 
 def fit_s(c, t, f, start, min_s, max_w):
@@ -68,7 +82,7 @@ def normaliza_oferta(po):
     return s
 
 def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
-    top = base_y + HALF
+    top = base_y + HALF - TOP_OFFSET
 
     tipo   = str(row.get('TIPO',   '') or '').strip()
     marca  = str(row.get('MARCA',  '') or '').strip()
@@ -87,7 +101,7 @@ def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
 
     c.setStrokeColor(HexColor('#AAAAAA'))
     c.setLineWidth(0.3 * mm)
-    c.line(0, top, PW, top)
+    c.line(0, base_y + HALF, PW, base_y + HALF)
 
     if tiene_marca:
         if tiene_tipo:
@@ -241,7 +255,7 @@ def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
             c.line(tx, prev_rl + fs*0.38, tx+tw, prev_rl + fs*0.38)
 
     # ── Código y vigencia ─────────────────────────────────────────────────────
-    info_rl = top - 99 * mm
+    info_rl = top - 99 * mm + TOP_OFFSET + BOTTOM_OFFSET
     if cod and cod != 'nan':
         c.setFont('MontR', 7)
         c.setFillColor(HexColor('#444444'))
