@@ -144,7 +144,7 @@ def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
                 c.drawString(cxs(c, det_exc.upper(), 'MontR', 6), exc_y, det_exc.upper())
 
         oz_top = top - 43 * mm
-        oz_bot = top - 88 * mm
+        oz_bot = top - 84 * mm
 
     else:
         if tiene_tipo:
@@ -184,7 +184,7 @@ def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
                 c.drawString(cxs(c, det_exc.upper(), 'MontR', 6), exc_y, det_exc.upper())
 
         oz_top = top - 38 * mm
-        oz_bot = top - 88 * mm
+        oz_bot = top - 84 * mm
 
     # ── Zona de oferta (solo si hay precio) ──────────────────────────────────
     if not sin_precio and po_raw:
@@ -241,7 +241,7 @@ def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
             clean_po = re.sub(r'[^\d,.]', '', po_raw)
             show_prev = (pn_fmt != fmt_precio(clean_po)) if clean_po else True
 
-        prev_rl = top - 91 * mm
+        prev_rl = top - 88 * mm
         if show_prev:
             txt = f"Precio Anterior: ${fmt_precio(pn_raw)}"
             fs  = 7.5
@@ -255,7 +255,7 @@ def draw_cenefa(c, base_y, row, vigencia, sin_precio=False):
             c.line(tx, prev_rl + fs*0.38, tx+tw, prev_rl + fs*0.38)
 
     # ── Código y vigencia ─────────────────────────────────────────────────────
-    info_rl = top - 99 * mm + TOP_OFFSET + BOTTOM_OFFSET
+    info_rl = top - 95 * mm + BOTTOM_OFFSET
     if cod and cod != 'nan':
         c.setFont('MontR', 7)
         c.setFillColor(HexColor('#444444'))
