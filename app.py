@@ -3,7 +3,6 @@ from flask import (Flask, request, jsonify, send_file,
 from flask_login import (LoginManager, UserMixin, login_user,
                          logout_user, login_required, current_user)
 from werkzeug.security import generate_password_hash, check_password_hash
-import pandas as pd
 import os, io, uuid, tempfile, sqlite3, functools
 from parser import parse_descripcion
 from generador import generar_pdf
@@ -155,6 +154,7 @@ def sincronizar_usuarios_env():
         conn.commit()
 
 def _leer_archivo(archivo, nombre):
+    import pandas as pd  # import perezoso: solo se carga si de verdad se importa un catálogo
     try:
         df = pd.read_excel(archivo, dtype=str, engine='openpyxl')
         return df.fillna('')
@@ -220,6 +220,7 @@ def cargar_catalogo_inicial():
     if not os.path.exists(csv_path):
         return
     try:
+        import pandas as pd  # import perezoso: solo si catalogo.csv existe de verdad
         df = pd.read_csv(csv_path, dtype=str).fillna('')
         ins, _ = _importar_df(df)
         print(f'[catalogo] {ins} productos nuevos cargados desde catalogo.csv')
@@ -479,15 +480,15 @@ _ALIAS_COLUMNAS = {
     'SUBCATEGORIA':  'SUBCATEGORIA',
 }
 
-def _detectar_fila_encabezado(df_sin_header, max_filas_buscar=15):
+def _detectar_fila_encabezado(filas_crudas, max_filas_buscar=15):
     """
-    Busca, dentro de las primeras filas del archivo (leído sin header),
+    Busca, dentro de las primeras filas del archivo (lista de listas),
     la fila que contiene los encabezados reales (CODIGO/CLAVE + DESCRIPCION).
     Devuelve el índice de esa fila o None si no se encontró.
     """
-    limite = min(max_filas_buscar, len(df_sin_header))
+    limite = min(max_filas_buscar, len(filas_crudas))
     for i in range(limite):
-        valores = [normalize_col(str(v)) for v in df_sin_header.iloc[i].tolist() if str(v).strip() and str(v).lower() != 'nan']
+        valores = [normalize_col(str(v)) for v in filas_crudas[i] if v is not None and str(v).strip() and str(v).lower() != 'nan']
         tiene_codigo = any(v in ('CODIGO', 'CLAVE') for v in valores)
         tiene_desc   = any(v == 'DESCRIPCION' for v in valores)
         if tiene_codigo and tiene_desc:
@@ -496,7 +497,8 @@ def _detectar_fila_encabezado(df_sin_header, max_filas_buscar=15):
 
 def _leer_excel_flexible(archivo):
     """
-    Lee un Excel de oferta/cenefas con estructura variable:
+    Lee un Excel de oferta/cenefas con estructura variable, usando openpyxl
+    directamente (sin pandas) para reducir el uso de memoria:
     - Puede tener filas de título/vigencia antes del encabezado real.
     - El encabezado puede estar en cualquier fila dentro de las primeras ~15.
     - Puede haber una primera columna vacía usada solo para sangría.
@@ -505,28 +507,33 @@ def _leer_excel_flexible(archivo):
       esas filas se descartan porque no son productos.
     - Nombres de columnas pueden variar en acentos/espacios/mayúsculas.
 
-    Devuelve un DataFrame con columnas canónicas:
+    Devuelve una lista de dicts con claves canónicas:
     CODIGO, DESCRIPCION, PRECIO NORMAL, PRECIO OFERTA, CATEGORIA, GANCHO
-    (las que no existan en el archivo quedan como columna vacía).
     """
+    import openpyxl
     archivo.seek(0)
-    crudo = pd.read_excel(archivo, header=None, dtype=str)
+    wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
+    try:
+        ws = wb.active
+        # read_only=True nos da un iterador de filas sin cargar todo en memoria de golpe
+        filas_crudas = [list(fila) for fila in ws.iter_rows(values_only=True)]
+    finally:
+        wb.close()
 
-    fila_header = _detectar_fila_encabezado(crudo)
+    fila_header = _detectar_fila_encabezado(filas_crudas)
     if fila_header is None:
         raise ValueError(
             'No se encontró una fila de encabezado con columnas '
             '"Codigo" y "Descripcion" en las primeras filas del archivo.'
         )
 
-    encabezados_raw = crudo.iloc[fila_header].tolist()
-    datos = crudo.iloc[fila_header + 1:].reset_index(drop=True)
-    datos.columns = range(len(datos.columns))
+    encabezados_raw = filas_crudas[fila_header]
+    filas_datos = filas_crudas[fila_header + 1:]
 
     # Mapear cada columna del archivo a su nombre canónico (o None si no aplica)
     mapa_col = {}
     for idx, encabezado in enumerate(encabezados_raw):
-        texto = str(encabezado).strip()
+        texto = str(encabezado).strip() if encabezado is not None else ''
         if not texto or texto.lower() == 'nan':
             continue
         norm = normalize_col(texto)
@@ -542,19 +549,31 @@ def _leer_excel_flexible(archivo):
         )
 
     columnas_finales = ['CODIGO', 'DESCRIPCION', 'PRECIO NORMAL', 'PRECIO OFERTA', 'CATEGORIA', 'GANCHO']
-    df = pd.DataFrame({col: '' for col in columnas_finales}, index=datos.index)
-    for idx, canonico in mapa_col.items():
-        if idx < len(datos.columns):
-            df[canonico] = datos[idx]
 
-    df = df.fillna('')
+    def celda(fila, idx):
+        if idx is None or idx >= len(fila):
+            return ''
+        v = fila[idx]
+        if v is None:
+            return ''
+        return str(v)
 
-    # Descartar filas de "sección" (sin código) y filas totalmente vacías.
-    df['CODIGO'] = df['CODIGO'].apply(lambda v: str(v).strip())
-    df['DESCRIPCION'] = df['DESCRIPCION'].apply(lambda v: str(v).strip())
-    df = df[(df['CODIGO'] != '') & (df['CODIGO'].str.lower() != 'nan') & (df['DESCRIPCION'] != '')]
-    df = df.reset_index(drop=True)
-    return df
+    idx_por_col = {canonico: idx for idx, canonico in mapa_col.items()}
+
+    registros = []
+    for fila in filas_datos:
+        if fila is None or all(v is None for v in fila):
+            continue  # fila totalmente vacía
+        registro = {col: celda(fila, idx_por_col.get(col)) for col in columnas_finales}
+        registro['CODIGO'] = registro['CODIGO'].strip()
+        registro['DESCRIPCION'] = registro['DESCRIPCION'].strip()
+        # Descartar filas de "sección" (sin código) y filas sin descripción.
+        if not registro['CODIGO'] or registro['CODIGO'].lower() == 'nan' or not registro['DESCRIPCION']:
+            continue
+        registros.append(registro)
+
+    del filas_crudas
+    return registros
 
 
 @app.route('/parsear', methods=['POST'])
@@ -564,20 +583,14 @@ def parsear():
         return jsonify({'error': 'No se recibió archivo'}), 400
     archivo = request.files['archivo']
     try:
-        df_raw = _leer_excel_flexible(archivo)
+        registros = _leer_excel_flexible(archivo)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'Error leyendo Excel: {str(e)}'}), 400
 
-    if df_raw.empty:
+    if not registros:
         return jsonify({'error': 'No se encontraron productos con Código y Descripción en el archivo'}), 400
-
-    # to_dict('records') + del df_raw es más ligero en memoria que iterrows():
-    # iterrows() construye una Series por fila (con overhead de índice/dtype);
-    # to_dict('records') genera dicts planos y liberamos el DataFrame de una vez.
-    registros = df_raw.to_dict('records')
-    del df_raw
 
     filas = []
     for row in registros:
