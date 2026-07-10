@@ -573,8 +573,14 @@ def parsear():
     if df_raw.empty:
         return jsonify({'error': 'No se encontraron productos con Código y Descripción en el archivo'}), 400
 
+    # to_dict('records') + del df_raw es más ligero en memoria que iterrows():
+    # iterrows() construye una Series por fila (con overhead de índice/dtype);
+    # to_dict('records') genera dicts planos y liberamos el DataFrame de una vez.
+    registros = df_raw.to_dict('records')
+    del df_raw
+
     filas = []
-    for _, row in df_raw.iterrows():
+    for row in registros:
         precio_oferta = str(row.get('PRECIO OFERTA', '')).strip()
         if not precio_oferta or precio_oferta.lower() == 'nan':
             continue  # sin precio/promoción no se genera cenefa para esa fila
@@ -588,6 +594,7 @@ def parsear():
             'PRECIO NORMAL': '' if str(row.get('PRECIO NORMAL', '')).strip().lower() in ('', 'nan') else str(row['PRECIO NORMAL']).strip(),
             'PRECIO OFERTA': precio_oferta,
         })
+    del registros
 
     if not filas:
         return jsonify({'error': 'No se encontraron filas con precio de oferta/promoción'}), 400
@@ -614,8 +621,18 @@ def generar():
     tmp = os.path.join(tempfile.gettempdir(), f'cenefas_{uuid.uuid4().hex}.pdf')
     try:
         generar_pdf(filas, vigencia, tmp, sin_precio=sin_precio_flag)
-        return send_file(tmp, mimetype='application/pdf',
-                         as_attachment=True, download_name='Cenefas.pdf')
+        # Leemos el PDF a memoria y borramos el archivo temporal de inmediato,
+        # en vez de dejar que send_file lo transmita en streaming desde disco.
+        # Así garantizamos que el .pdf no quede huérfano en /tmp si el envío
+        # se corta (en RAM limitada, /tmp comparte el mismo límite de memoria).
+        with open(tmp, 'rb') as f:
+            pdf_bytes = f.read()
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='Cenefas.pdf'
+        )
     except Exception as e:
         return jsonify({'error': f'Error generando PDF: {str(e)}'}), 500
     finally:
